@@ -16,6 +16,9 @@ classifiers = [
     
 ]
 dependencies = [
+    "dagshub>=0.6.3",
+    "dvc>=3.63.0",
+    "mlflow>=3.4.0",
     "numpy>=2.3.3",
     "pandas>=2.3.2",
     "pip",
