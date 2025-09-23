@@ -4,7 +4,7 @@
     <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
 </a>
 
-Sentiment analysis for text source
+Sentiment analysis for English text source
 
 ## Project Organization
 
