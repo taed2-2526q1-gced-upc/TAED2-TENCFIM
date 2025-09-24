@@ -22,14 +22,15 @@ dependencies = [
     "evaluate>=0.4.6",
     "great-expectations>=0.18.8",
     "loguru>=0.7.3",
-    "mlflow<3.0",
+    "mlflow[extras]<3.0",
     "numpy>=2.3.3",
     "pandas>=2.3.2",
     "pip",
+    "protobuf==3.20.*",
     "python-dotenv",
     "ruff",
     "torch>=2.8.0",
-    "transformers>=4.56.2",
+    "transformers[torch]>=4.56.2",
 ]
 requires-python = "~=3.11.0"
 
