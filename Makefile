@@ -38,6 +38,12 @@ format:
 	ruff check --fix
 	ruff format
 
+##Prepare data
+.PHONY: data
+data:
+	python src/data/download_raw_dataset.py
+	python src/data/preprocess.py
+	python src/data/split_data.py
 
 
 
@@ -50,7 +56,10 @@ create_environment:
 	@echo ">>> Windows: .\\\\.venv\\\\Scripts\\\\activate"
 	@echo ">>> Unix/macOS: source ./.venv/bin/activate"
 	
-
+activate_environment:
+	@echo ">>> Activating uv virtual environment:"
+	@echo ">>> Windows: .\\\\.venv\\\\Scripts\\\\activate"
+	@echo ">>> Unix/macOS: source ./.venv/bin/activate"
 
 
 #################################################################################
