@@ -1,10 +1,10 @@
 import great_expectations as gx
 
-from src.config import INTERIM_DATA_DIR, RAW_DATA_DIR, ROOT_DIR
+from src.config import INTERIM_DATA_DIR, INTERIM_DATA_NAME, RAW_DATA_DIR, RAW_DATA_NAME, ROOT_DIR
 
 DATASOURCE_NAME = "pandas"
-RAW_DATA_ASSET = "raw_imdb_reviews"
-CLEAN_DATA_ASSET = "clean_imdb_reviews"
+RAW_DATA_ASSET = "raw_emotions"
+CLEAN_DATA_ASSET = "clean_emotions"
 RAW_DATA_VALIDATOR = "raw_data_validator"
 CLEAN_DATA_VALIDATOR = "clean_data_validator"
 EXPECTATIONS_SUITE = "data_quality_validation"
@@ -23,12 +23,22 @@ if __name__ == "__main__":
     }
     context.update_data_docs_site("local_site", data_docs_config)
 
-    datasource = context.data_sources.add_or_update_pandas(name=DATASOURCE_NAME)
+    datasource = context.add_datasource(
+        name=DATASOURCE_NAME,
+        class_name="PandasDatasource"
+    )
 
-    raw_asset = datasource.add_parquet_asset(name=RAW_DATA_ASSET, path=RAW_DATA_DIR / "imdb.parquet")
-    raw_data_batch_definition = raw_asset.add_batch_definition(name="imdb_reviews_data")
-    clean_asset = datasource.add_parquet_asset(name=CLEAN_DATA_ASSET, path=INTERIM_DATA_DIR / "imdb_cleaned.parquet")
-    clean_data_batch_definition = clean_asset.add_batch_definition(name="imdb_reviews_data")
+    raw_asset = datasource.add_parquet_asset(
+        name=RAW_DATA_ASSET,
+        filepath=RAW_DATA_DIR / RAW_DATA_NAME
+    )
+    raw_data_batch_definition = raw_asset.add_batch_definition(name="emotions_data")
+    clean_asset = datasource.add_asset(
+        asset_type="parquet",
+        name=CLEAN_DATA_ASSET,
+        filepath=INTERIM_DATA_DIR / INTERIM_DATA_NAME
+    )
+    clean_data_batch_definition = clean_asset.add_batch_definition(name="emotions_data")
 
     expectation_suite = gx.ExpectationSuite(EXPECTATIONS_SUITE)
     context.suites.add_or_update(expectation_suite)

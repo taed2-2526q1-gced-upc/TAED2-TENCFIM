@@ -18,7 +18,9 @@ logger.info(f"ROOT_DIR path is: {ROOT_DIR}")
 
 DATA_DIR = ROOT_DIR / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
+RAW_DATA_NAME = "raw_emotions.parquet"
 INTERIM_DATA_DIR = DATA_DIR / "interim"
+INTERIM_DATA_NAME = "emotions_cleaned.parquet"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
 EXTERNAL_DATA_DIR = DATA_DIR / "external"
 

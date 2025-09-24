@@ -20,6 +20,8 @@ dependencies = [
     "datasets>=4.1.1",
     "dvc>=3.63.0",
     "evaluate>=0.4.6",
+    "great-expectations>=0.18.8",
+    "loguru>=0.7.3",
     "mlflow<3.0",
     "numpy>=2.3.3",
     "pandas>=2.3.2",
