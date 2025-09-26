@@ -66,9 +66,9 @@ except Exception:
     pass
 
 SPEEDUP_TRAINING = True  # Set to True to speed up training by using a smaller dataset
-SAMPLE_SIZE = 10000  # Number of samples to use if SPEEDUP_TRAINING is True
+SAMPLE_SIZE = 20000  # Number of samples to use if SPEEDUP_TRAINING is True
 
-BATCH_SIZE = 32
+BATCH_SIZE = 8
 EPOCHS = 3
 LEARNING_RATE = 2e-5
 WEIGHT_DECAY = 0.01
@@ -157,6 +157,7 @@ def main(hf_model: str, model_name: str):
     data_collator = DataCollatorWithPadding(tokenizer)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    print("Using device: ", device)
     model = AutoModelForSequenceClassification.from_pretrained(
         hf_model,
         num_labels=len(label_list),
@@ -174,7 +175,7 @@ def main(hf_model: str, model_name: str):
         train_dataset=train_ds,
         eval_dataset=validation_ds,
         compute_metrics=compute_metrics,
-        callbacks=[EarlyStoppingCallback(early_stopping_patience=2)],  # Stop training if no improvement after 2 evals
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=5)],  # Stop training if no improvement after 2 evals
     )
 
     # Workaround: Some versions of transformers+dagshub raise
