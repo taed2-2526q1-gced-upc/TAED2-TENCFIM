@@ -7,6 +7,7 @@ import dagshub
 import numpy as np
 import torch
 import os
+from sklearn.metrics import f1_score
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
@@ -48,10 +49,10 @@ except Exception:
     pass
 
 SPEEDUP_TRAINING = True  # Set to True to speed up training by using a smaller dataset
-SAMPLE_SIZE = 500
+SAMPLE_SIZE = 1000  
 
 BATCH_SIZE = 32
-EPOCHS = 1
+EPOCHS = 3
 LEARNING_RATE = 2e-5
 WEIGHT_DECAY = 0.01
 LR_SCHEDULER = "linear"
@@ -75,10 +76,11 @@ def main(hf_model: str, model_name: str):
 
 def _train_model(hf_model: str, model_name: str):
     # ------------------------------------------------------------------
-    # Prepare tokenizer & metric
+    # Prepare tokenizer & metrics
     # ------------------------------------------------------------------
     tokenizer = AutoTokenizer.from_pretrained(hf_model)
-    metric = load("accuracy")
+    accuracy_metric = load("accuracy")
+    f1_metric = load("f1")
 
     # Emotion label set (13 classes) of boltuix/emotions-dataset
     label_list = [
@@ -107,7 +109,19 @@ def _train_model(hf_model: str, model_name: str):
     def compute_metrics(eval_preds):
         logits, labels = eval_preds
         preds = np.argmax(logits, axis=-1)
-        return metric.compute(predictions=preds, references=labels)
+        
+        # Calculate accuracy
+        accuracy = accuracy_metric.compute(predictions=preds, references=labels)
+        
+        # Calculate F1 score (macro average for multi-class)
+        f1_macro = f1_metric.compute(predictions=preds, references=labels, average="macro")
+        f1_weighted = f1_metric.compute(predictions=preds, references=labels, average="weighted")
+        
+        return {
+            "accuracy": accuracy["accuracy"],
+            "f1_macro": f1_macro["f1"],
+            "f1_weighted": f1_weighted["f1"]
+        }
 
     # Load Hugging Face dataset (single 'train' split) and create validation split
     logger.info("Loading boltuix/emotions-dataset and creating validation split...")
@@ -209,10 +223,19 @@ def _train_model(hf_model: str, model_name: str):
             train_result = trainer.train()
             logger.info(f"Training completed successfully! Final loss: {train_result.training_loss}")
             
-            # Log training metrics
+            # Evaluate on validation set to get final metrics
+            logger.info("Evaluating model on validation set...")
+            eval_results = trainer.evaluate()
+            logger.info(f"Validation results: {eval_results}")
+            
+            # Log training and validation metrics
             mlflow.log_metrics({
                 "final_train_loss": train_result.training_loss,
                 "total_steps": train_result.global_step,
+                "eval_loss": eval_results["eval_loss"],
+                "eval_accuracy": eval_results["eval_accuracy"],
+                "eval_f1_macro": eval_results["eval_f1_macro"],
+                "eval_f1_weighted": eval_results["eval_f1_weighted"]
             })
             
             logger.info("MLflow run completed successfully.")
