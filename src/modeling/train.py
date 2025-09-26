@@ -3,16 +3,34 @@ from datasets import load_dataset
 from evaluate import load
 from loguru import logger
 import mlflow
+import sys
+import os
+
+# Use UTF-8 encoding for stdout/stderr to avoid UnicodeEncodeError on Windows
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
+
+# Take out colors and emojis from rich logs (loguru uses rich under the hood)
+os.environ["RICH_NO_COLOR"] = "1"
+os.environ["RICH_NO_EMOJI"] = "1"
+
 import dagshub
 import numpy as np
 import torch
-import os
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
     DataCollatorWithPadding,
     Trainer,
     TrainingArguments,
+    get_linear_schedule_with_warmup,
+    EarlyStoppingCallback
+)
+
+from sklearn.metrics import (
+    f1_score, 
+    precision_score, 
+    recall_score
 )
 
 from src.config import MODELS_DIR, SEED
@@ -48,10 +66,10 @@ except Exception:
     pass
 
 SPEEDUP_TRAINING = True  # Set to True to speed up training by using a smaller dataset
-SAMPLE_SIZE = 500
+SAMPLE_SIZE = 10000  # Number of samples to use if SPEEDUP_TRAINING is True
 
 BATCH_SIZE = 32
-EPOCHS = 1
+EPOCHS = 3
 LEARNING_RATE = 2e-5
 WEIGHT_DECAY = 0.01
 LR_SCHEDULER = "linear"
@@ -94,7 +112,11 @@ def main(hf_model: str, model_name: str):
     def compute_metrics(eval_preds):
         logits, labels = eval_preds
         preds = np.argmax(logits, axis=-1)
-        return metric.compute(predictions=preds, references=labels)
+        f1 = f1_score(labels, preds, average="macro")
+        precision = precision_score(labels, preds, average="macro")
+        recall = recall_score(labels, preds, average="macro")
+        acc = metric.compute(predictions=preds, references=labels)["accuracy"]
+        return {"accuracy": acc, "f1_macro": f1, "precision_macro": precision, "recall_macro": recall}
 
     # Load Hugging Face dataset (single 'train' split) and create validation split
     logger.info("Loading boltuix/emotions-dataset and creating validation split...")
@@ -118,13 +140,17 @@ def main(hf_model: str, model_name: str):
         per_device_train_batch_size=BATCH_SIZE,
         per_device_eval_batch_size=BATCH_SIZE,
         eval_strategy="epoch",
+        save_strategy="epoch",
+        save_total_limit=2,
         num_train_epochs=EPOCHS,
         learning_rate=LEARNING_RATE,
         weight_decay=WEIGHT_DECAY,
         lr_scheduler_type=LR_SCHEDULER,
         push_to_hub=False,
-        metric_for_best_model="accuracy",
-        load_best_model_at_end=False,
+        metric_for_best_model="f1_macro",
+        load_best_model_at_end=True,
+        greater_is_better=True,
+        seed=SEED,
         report_to=[],  # avoid auto-integrations (wandb/comet/dagshub)
     )
 
@@ -148,6 +174,7 @@ def main(hf_model: str, model_name: str):
         train_dataset=train_ds,
         eval_dataset=validation_ds,
         compute_metrics=compute_metrics,
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=2)],  # Stop training if no improvement after 2 evals
     )
 
     # Workaround: Some versions of transformers+dagshub raise
@@ -180,10 +207,14 @@ def main(hf_model: str, model_name: str):
         )
         trainer.train()
 
+    # Final evaluation
+    metrics = trainer.evaluate()
+    mlflow.log_metrics(metrics)
+
     trainer.save_model(str(MODELS_DIR / model_name))
 
 
 if __name__ == "__main__":
     main()
 
-#python src/modeling/train.py SamLowe/roberta-base-go_emotions roberta-emotions-13
+#python src/modeling/train.py SamLowe/roberta-base-go_emotions roberta-emotions-13-v1
