@@ -4615,6 +4615,7 @@ dependencies = [
     { name = "protobuf" },
     { name = "python-dotenv" },
     { name = "ruff" },
+    { name = "scikit-learn" },
     { name = "torch" },
     { name = "transformers", extra = ["torch"] },
 ]
@@ -4641,6 +4642,7 @@ requires-dist = [
     { name = "protobuf", specifier = "==3.20.*" },
     { name = "python-dotenv" },
     { name = "ruff" },
+    { name = "scikit-learn", specifier = ">=1.7.2" },
     { name = "torch", specifier = ">=2.8.0" },
     { name = "transformers", extras = ["torch"], specifier = ">=4.56.2" },
 ]
