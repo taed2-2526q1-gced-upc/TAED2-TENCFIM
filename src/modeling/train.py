@@ -3,34 +3,16 @@ from datasets import load_dataset
 from evaluate import load
 from loguru import logger
 import mlflow
-import sys
-import os
-
-# Use UTF-8 encoding for stdout/stderr to avoid UnicodeEncodeError on Windows
-sys.stdout.reconfigure(encoding="utf-8")
-sys.stderr.reconfigure(encoding="utf-8")
-
-# Take out colors and emojis from rich logs (loguru uses rich under the hood)
-os.environ["RICH_NO_COLOR"] = "1"
-os.environ["RICH_NO_EMOJI"] = "1"
-
 import dagshub
 import numpy as np
 import torch
+import os
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
     DataCollatorWithPadding,
     Trainer,
     TrainingArguments,
-    get_linear_schedule_with_warmup,
-    EarlyStoppingCallback
-)
-
-from sklearn.metrics import (
-    f1_score, 
-    precision_score, 
-    recall_score
 )
 
 from src.config import MODELS_DIR, SEED
@@ -66,10 +48,10 @@ except Exception:
     pass
 
 SPEEDUP_TRAINING = True  # Set to True to speed up training by using a smaller dataset
-SAMPLE_SIZE = 20000  # Number of samples to use if SPEEDUP_TRAINING is True
+SAMPLE_SIZE = 500
 
-BATCH_SIZE = 8
-EPOCHS = 3
+BATCH_SIZE = 32
+EPOCHS = 1
 LEARNING_RATE = 2e-5
 WEIGHT_DECAY = 0.01
 LR_SCHEDULER = "linear"
@@ -79,6 +61,19 @@ LR_SCHEDULER = "linear"
 @click.argument("hf_model", type=str)
 @click.argument("model_name", type=str)
 def main(hf_model: str, model_name: str):
+    try:
+        logger.info(f"Starting training pipeline for model: {model_name}")
+        logger.info(f"Base HF model: {hf_model}")
+        _train_model(hf_model, model_name)
+    except Exception as e:
+        logger.error(f"Fatal error in main(): {str(e)}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Full traceback:\n{traceback.format_exc()}")
+        raise
+
+
+def _train_model(hf_model: str, model_name: str):
     # ------------------------------------------------------------------
     # Prepare tokenizer & metric
     # ------------------------------------------------------------------
@@ -112,11 +107,7 @@ def main(hf_model: str, model_name: str):
     def compute_metrics(eval_preds):
         logits, labels = eval_preds
         preds = np.argmax(logits, axis=-1)
-        f1 = f1_score(labels, preds, average="macro")
-        precision = precision_score(labels, preds, average="macro")
-        recall = recall_score(labels, preds, average="macro")
-        acc = metric.compute(predictions=preds, references=labels)["accuracy"]
-        return {"accuracy": acc, "f1_macro": f1, "precision_macro": precision, "recall_macro": recall}
+        return metric.compute(predictions=preds, references=labels)
 
     # Load Hugging Face dataset (single 'train' split) and create validation split
     logger.info("Loading boltuix/emotions-dataset and creating validation split...")
@@ -140,24 +131,26 @@ def main(hf_model: str, model_name: str):
         per_device_train_batch_size=BATCH_SIZE,
         per_device_eval_batch_size=BATCH_SIZE,
         eval_strategy="epoch",
-        save_strategy="epoch",
-        save_total_limit=2,
         num_train_epochs=EPOCHS,
         learning_rate=LEARNING_RATE,
         weight_decay=WEIGHT_DECAY,
         lr_scheduler_type=LR_SCHEDULER,
         push_to_hub=False,
-        metric_for_best_model="f1_macro",
-        load_best_model_at_end=True,
-        greater_is_better=True,
-        seed=SEED,
+        metric_for_best_model="accuracy",
+        load_best_model_at_end=False,
         report_to=[],  # avoid auto-integrations (wandb/comet/dagshub)
     )
 
     data_collator = DataCollatorWithPadding(tokenizer)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print("Using device: ", device)
+    logger.info(f"Using device: {device}")
+    
+    if device == "cuda":
+        logger.info(f"GPU memory before model loading: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
+        # Clear cache to avoid memory issues
+        torch.cuda.empty_cache()
+    
     model = AutoModelForSequenceClassification.from_pretrained(
         hf_model,
         num_labels=len(label_list),
@@ -166,6 +159,9 @@ def main(hf_model: str, model_name: str):
         problem_type="single_label_classification",
         ignore_mismatched_sizes=True,  # different head than original 28-label multi-label
     ).to(device)
+    
+    if device == "cuda":
+        logger.info(f"GPU memory after model loading: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
 
     trainer = Trainer(
         model=model,
@@ -175,7 +171,6 @@ def main(hf_model: str, model_name: str):
         train_dataset=train_ds,
         eval_dataset=validation_ds,
         compute_metrics=compute_metrics,
-        callbacks=[EarlyStoppingCallback(early_stopping_patience=5)],  # Stop training if no improvement after 2 evals
     )
 
     # Workaround: Some versions of transformers+dagshub raise
@@ -192,30 +187,76 @@ def main(hf_model: str, model_name: str):
     logger.info(f"Starting training of model {model_name}...")
     mlflow.set_experiment("Emotion detection (13-class)")
     # mlflow.set_system_metrics_sampling_interval(5)
-    with mlflow.start_run(run_name=model_name):
-        mlflow.log_params(
-            {
-                "model": hf_model,
-                "num_labels": len(label_list),
-                "epochs": EPOCHS,
-                "batch_size": BATCH_SIZE,
-                "lr": LEARNING_RATE,
-                "weight_decay": WEIGHT_DECAY,
-                "scheduler": LR_SCHEDULER,
-                "speedup_training": SPEEDUP_TRAINING,
-                "sample_size": SAMPLE_SIZE if SPEEDUP_TRAINING else None,
-            }
-        )
-        trainer.train()
-
-    # Final evaluation
-    metrics = trainer.evaluate()
-    mlflow.log_metrics(metrics)
-
-    trainer.save_model(str(MODELS_DIR / model_name))
+    
+    try:
+        with mlflow.start_run(run_name=model_name):
+            mlflow.log_params(
+                {
+                    "model": hf_model,
+                    "num_labels": len(label_list),
+                    "epochs": EPOCHS,
+                    "batch_size": BATCH_SIZE,
+                    "lr": LEARNING_RATE,
+                    "weight_decay": WEIGHT_DECAY,
+                    "scheduler": LR_SCHEDULER,
+                    "speedup_training": SPEEDUP_TRAINING,
+                    "sample_size": SAMPLE_SIZE if SPEEDUP_TRAINING else None,
+                }
+            )
+            logger.info("MLflow parameters logged successfully.")
+            
+            logger.info("Starting trainer.train()...")
+            train_result = trainer.train()
+            logger.info(f"Training completed successfully! Final loss: {train_result.training_loss}")
+            
+            # Log training metrics
+            mlflow.log_metrics({
+                "final_train_loss": train_result.training_loss,
+                "total_steps": train_result.global_step,
+            })
+            
+            logger.info("MLflow run completed successfully.")
+    
+    except Exception as e:
+        logger.error(f"Error during training or MLflow logging: {str(e)}")
+        logger.error(f"Exception type: {type(e).__name__}")
+        raise  # Re-raise the exception to see the full traceback
+    
+    logger.info(f"Saving model to {MODELS_DIR / model_name}...")
+    try:
+        trainer.save_model(str(MODELS_DIR / model_name))
+        logger.info("Model saved successfully!")
+    except Exception as e:
+        logger.error(f"Error saving model: {str(e)}")
+        raise
+    
+    # Clean up resources
+    if device == "cuda":
+        torch.cuda.empty_cache()
+        logger.info("GPU memory cleared.")
+    
+    del model, trainer  # Explicitly delete large objects
+    
+    logger.success(f"🎉 Training pipeline completed successfully for model '{model_name}'!")
+    logger.info(f"Model saved at: {MODELS_DIR / model_name}")
+    logger.info("Script execution finished. Staying in WSL environment...")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        logger.info("Script starting...")
+        main()
+        logger.success("Script completed successfully. Press any key to continue...")
+        input()  # Wait for user input to prevent immediate exit
+    except KeyboardInterrupt:
+        logger.warning("Script interrupted by user (Ctrl+C)")
+    except Exception as e:
+        logger.error(f"Unhandled exception in main execution: {str(e)}")
+        import traceback
+        logger.error(f"Full traceback:\n{traceback.format_exc()}")
+        logger.error("Press any key to exit...")
+        input()  # Wait before exiting so user can see the error
+    finally:
+        logger.info("Cleaning up and exiting...")
 
-#python src/modeling/train.py SamLowe/roberta-base-go_emotions roberta-emotions-13-v1
+#python src/modeling/train.py SamLowe/roberta-base-go_emotions roberta-emotions-13

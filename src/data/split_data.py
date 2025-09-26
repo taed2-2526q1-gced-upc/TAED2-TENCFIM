@@ -1,6 +1,7 @@
 import pandas as pd
 from loguru import logger
-from src.config import INTERIM_DATA_DIR, INTERIM_DATA_NAME, PROCESSED_DATA_DIR, SEED, TRAIN_SPLIT, VALIDATION_SPLIT
+from sklearn.model_selection import train_test_split
+from src.config import INTERIM_DATA_DIR, INTERIM_DATA_NAME, PROCESSED_DATA_DIR, SEED, TRAIN_SPLIT, VALIDATION_SPLIT, TEST_SPLIT
 
 
 def split_data():
@@ -21,20 +22,24 @@ def split_data():
         return
 
     try:
-        n_samples = df.shape[0]
-        train_size = int(n_samples * TRAIN_SPLIT)
-        validation_size = int(n_samples * VALIDATION_SPLIT)
+        train_df, temp_df = train_test_split(
+            df,
+            test_size=(1 - TRAIN_SPLIT),
+            stratify=df["labels"],                  # ensures that the split contains the same proportion
+            random_state=SEED                      # of labels that were in the original df
+        )
 
-        if train_size + validation_size >= n_samples:
-            logger.error("Split sizes are too large for the dataset.")
-            return
+        validation_size = VALIDATION_SPLIT / (VALIDATION_SPLIT + TEST_SPLIT)
 
-        train_df = df.sample(n=train_size, replace=False, random_state=SEED)
-        remaining_df = df.drop(train_df.index)
-        validation_df = remaining_df.sample(n=validation_size, replace=False, random_state=SEED)
-        test_df = remaining_df.drop(validation_df.index)
+        validation_df, test_df = train_test_split(
+            temp_df,
+            test_size=(1 - validation_size),
+            stratify=temp_df["labels"],
+            random_state=SEED
+        )
+
     except Exception as e:
-        logger.error(f"Error during data splitting: {e}")
+        logger.error(f"Error during stratified splitting: {e}")
         return
 
     try:
