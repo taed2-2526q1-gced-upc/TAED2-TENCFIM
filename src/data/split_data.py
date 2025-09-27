@@ -25,7 +25,7 @@ def split_data():
         train_df, temp_df = train_test_split(
             df,
             test_size=(1 - TRAIN_SPLIT),
-            stratify=df["label"],                  # ensures that the split contains the same proportion
+            stratify=df["labels"],                  # ensures that the split contains the same proportion
             random_state=SEED                      # of labels that were in the original df
         )
 
@@ -34,7 +34,7 @@ def split_data():
         validation_df, test_df = train_test_split(
             temp_df,
             test_size=(1 - validation_size),
-            stratify=temp_df["label"],
+            stratify=temp_df["labels"],
             random_state=SEED
         )
 
