@@ -1,0 +1,7 @@
+stages:
+  download:
+    cmd: python -m src.data.download_raw_dataset
+    deps:
+    - src/data/download_raw_dataset.py
+    outs:
+    - data/raw/raw_emotions.parquet

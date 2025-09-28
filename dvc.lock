@@ -1,0 +1,14 @@
+schema: '2.0'
+stages:
+  download:
+    cmd: python -m src.data.download_raw_dataset
+    deps:
+    - path: src/data/download_raw_dataset.py
+      hash: md5
+      md5: 97a2df416556963d36116ef9d85fb309
+      size: 688
+    outs:
+    - path: data/raw/raw_emotions.parquet
+      hash: md5
+      md5: 5ca588a5d3438f1a48f86a045f3d11b8
+      size: 7410569
