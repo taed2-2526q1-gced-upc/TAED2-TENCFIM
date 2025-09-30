@@ -5,3 +5,27 @@ stages:
     - src/data/download_raw_dataset.py
     outs:
     - data/raw/raw_emotions.parquet
+  preprocess:
+    cmd: python -m src.data.preprocess
+    deps:
+    - data/raw/raw_emotions.parquet
+    - src/data/download_raw_dataset.py
+    outs:
+    - data/interim/emotions_cleaned.parquet
+  split:
+    cmd: python -m src.data.split_data
+    deps:
+    - data/interim/emotions_cleaned.parquet
+    - src/data/split_data.py
+    outs:
+    - data/processed/train.parquet
+    - data/processed/validation.parquet
+    - data/processed/test.parquet
+  train:
+    cmd: python -m src.modeling.train SamLowe/roberta-base-go_emotions roberta-emotions-13
+    deps:
+    - data/processed/train.parquet
+    - data/processed/validation.parquet
+    - data/processed/test.parquet
+    - src/modeling/train.py
+

@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 from loguru import logger
 
 from src.config import RAW_DATA_DIR, RAW_DATA_NAME
@@ -11,6 +12,7 @@ def download_dataset():
     logger.info("Downloading dataset from Hugging Face")
     try:
         df = pd.read_parquet("hf://datasets/boltuix/emotions-dataset/emotions_dataset.parquet")
+        os.makedirs(RAW_DATA_DIR, exist_ok=True)
         df.to_parquet(RAW_DATA_DIR / RAW_DATA_NAME, index=False)
         logger.info(f"Dataset saved to {RAW_DATA_DIR / RAW_DATA_NAME}")
     except Exception as e:
