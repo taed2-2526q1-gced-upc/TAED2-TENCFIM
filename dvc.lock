@@ -1,0 +1,73 @@
+schema: '2.0'
+stages:
+  download:
+    cmd: python -m src.data.download_raw_dataset
+    deps:
+    - path: src/data/download_raw_dataset.py
+      hash: md5
+      md5: a78d78a8c7d2dbd071481b9fe24d77c7
+      size: 747
+    outs:
+    - path: data/raw/raw_emotions.parquet
+      hash: md5
+      md5: 5ca588a5d3438f1a48f86a045f3d11b8
+      size: 7410569
+  preprocess:
+    cmd: python -m src.data.preprocess
+    deps:
+    - path: data/raw/raw_emotions.parquet
+      hash: md5
+      md5: 5ca588a5d3438f1a48f86a045f3d11b8
+      size: 7410569
+    - path: src/data/download_raw_dataset.py
+      hash: md5
+      md5: a78d78a8c7d2dbd071481b9fe24d77c7
+      size: 747
+    outs:
+    - path: data/interim/emotions_cleaned.parquet
+      hash: md5
+      md5: 22b2a77851cb193d97d46bf0c3301534
+      size: 8197218
+  split:
+    cmd: python -m src.data.split_data
+    deps:
+    - path: data/interim/emotions_cleaned.parquet
+      hash: md5
+      md5: 22b2a77851cb193d97d46bf0c3301534
+      size: 8197218
+    - path: src/data/split_data.py
+      hash: md5
+      md5: 72162b62f111d1197cc1ea5a29e99d11
+      size: 2040
+    outs:
+    - path: data/processed/test.parquet
+      hash: md5
+      md5: 7bfcefd7941ff11480da1183c2686d43
+      size: 840390
+    - path: data/processed/train.parquet
+      hash: md5
+      md5: 0e1c1bb9ba21074d665862bab703ed9d
+      size: 5806796
+    - path: data/processed/validation.parquet
+      hash: md5
+      md5: d15ed416b6539992a8461ba56623ce20
+      size: 1659762
+  train:
+    cmd: python -m src.modeling.train SamLowe/roberta-base-go_emotions roberta-emotions-13
+    deps:
+    - path: data/processed/test.parquet
+      hash: md5
+      md5: 7bfcefd7941ff11480da1183c2686d43
+      size: 840390
+    - path: data/processed/train.parquet
+      hash: md5
+      md5: 0e1c1bb9ba21074d665862bab703ed9d
+      size: 5806796
+    - path: data/processed/validation.parquet
+      hash: md5
+      md5: d15ed416b6539992a8461ba56623ce20
+      size: 1659762
+    - path: src/modeling/train.py
+      hash: md5
+      md5: 62a44e03d44b0c01f89ca5739a4c5cbb
+      size: 10894
