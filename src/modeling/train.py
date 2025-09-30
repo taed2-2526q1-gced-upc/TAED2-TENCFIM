@@ -61,11 +61,15 @@ LR_SCHEDULER = "linear"
 @click.command()
 @click.argument("hf_model", type=str)
 @click.argument("model_name", type=str)
-def main(hf_model: str, model_name: str):
+@click.option("--finetune", is_flag=True, default=False, help="Enable finetuning from a checkpoint instead of training from scratch")
+@click.option("--checkpoint", type=str, default=None, help="Path or HF identifier of checkpoint to finetune from")
+@click.option("--freeze-base", is_flag=True, default=False, help="When finetuning, freeze base model parameters and train only the classification head")
+def main(hf_model: str, model_name: str, finetune: bool, checkpoint: str, freeze_base: bool):
     try:
         logger.info(f"Starting training pipeline for model: {model_name}")
         logger.info(f"Base HF model: {hf_model}")
-        _train_model(hf_model, model_name)
+        logger.info(f"Finetune: {finetune} | checkpoint: {checkpoint} | freeze_base: {freeze_base}")
+        _train_model(hf_model, model_name, finetune=finetune, checkpoint=checkpoint, freeze_base=freeze_base)
     except Exception as e:
         logger.error(f"Fatal error in main(): {str(e)}")
         logger.error(f"Exception type: {type(e).__name__}")
@@ -74,7 +78,7 @@ def main(hf_model: str, model_name: str):
         raise
 
 
-def _train_model(hf_model: str, model_name: str):
+def _train_model(hf_model: str, model_name: str, finetune: bool = False, checkpoint: str | None = None, freeze_base: bool = False):
     # ------------------------------------------------------------------
     # Prepare tokenizer & metrics
     # ------------------------------------------------------------------
@@ -161,21 +165,76 @@ def _train_model(hf_model: str, model_name: str):
     logger.info(f"Using device: {device}")
     
     if device == "cuda":
-        logger.info(f"GPU memory before model loading: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
         # Clear cache to avoid memory issues
         torch.cuda.empty_cache()
     
+    # Model loading logic: support full training (load base HF model) or finetuning from a
+    # provided checkpoint. When finetuning, we allow loading mismatched sizes and then
+    # replace the classifier head to match our new number of classes and problem type
+    # (single-label multi-class). We also optionally freeze the base model parameters.
+
+    load_source = checkpoint if finetune and checkpoint else hf_model
     model = AutoModelForSequenceClassification.from_pretrained(
-        hf_model,
+        load_source,
         num_labels=len(label_list),
         id2label=id2label,
         label2id={k: v for v, k in id2label.items()},
         problem_type="single_label_classification",
-        ignore_mismatched_sizes=True,  # different head than original 28-label multi-label
+        ignore_mismatched_sizes=True,
     ).to(device)
+
+    # If finetuning from a checkpoint whose head had a different shape or problem type,
+    # ensure we replace the classifier head so it has correct out_features and ties.
+    # This is safe because `ignore_mismatched_sizes=True` already loaded available weights.
+    if finetune:
+        # Try to detect the classifier module commonly named 'classifier' or 'score' or the
+        # `classifier` attribute for many models. We'll create a new linear head matching
+        # our num_labels and replace it if shapes differ.
+        try:
+            num_labels_current = getattr(model.config, "num_labels", None)
+            if num_labels_current != len(label_list) or model.config.problem_type != "single_label_classification":
+                logger.info("Replacing model head to match new number of labels and single-label problem type.")
+                # Many HF models have `.classifier` or `.score` or `.classifier` inside `.roberta` etc.
+                # Use the provided helper `num_labels` and let HF handle the new head via `from_pretrained`
+                # by re-initializing the classifier weight.
+                model.config.num_labels = len(label_list)
+                model.config.problem_type = "single_label_classification"
+                # Re-create the classifier layer if it exists as `classifier` or `score`
+                if hasattr(model, "classifier") and hasattr(model.classifier, "out_features"):
+                    in_features = model.classifier.in_features
+                    model.classifier = torch.nn.Linear(in_features, len(label_list)).to(device)
+                else:
+                    # Fallback: try to locate a `score` or `out_proj` style head
+                    replaced = False
+                    for name, module in model.named_modules():
+                        if isinstance(module, torch.nn.Linear) and module.out_features != len(label_list):
+                            parent = name.rsplit(".", 1)[0] if "." in name else None
+                            if parent:
+                                # set attribute on parent
+                                parent_module = model
+                                for part in parent.split("."):
+                                    parent_module = getattr(parent_module, part)
+                                in_features = module.in_features
+                                setattr(parent_module, name.split(".")[-1], torch.nn.Linear(in_features, len(label_list)).to(device))
+                                replaced = True
+                                break
+                    if not replaced:
+                        logger.debug("Could not find a standard classifier module to replace; relying on HF internal head.")
+
+        except Exception as e:
+            logger.warning(f"Finetune head-replacement encountered an issue: {e}")
+
+        # Optionally freeze base model parameters to only train the classification head
+        if freeze_base:
+            logger.info("Freezing base model parameters; only classifier head will be trainable.")
+            for name, param in model.named_parameters():
+                # Heuristic: treat parameters that contain 'classifier', 'head', 'pooler', or 'out_proj' as trainable
+                if any(k in name.lower() for k in ["classifier", "head", "pooler", "out_proj", "lm_head"]):
+                    param.requires_grad = True
+                else:
+                    param.requires_grad = False
     
-    if device == "cuda":
-        logger.info(f"GPU memory after model loading: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
+
 
     trainer = Trainer(
         model=model,

@@ -25,6 +25,10 @@ def sanitize_text(dataframe: pd.DataFrame) -> pd.DataFrame:
         .str.normalize("NFKD")
     )
 
+    # drop rows where text is not a Python str
+    mask = dataframe["text"].apply(lambda v: isinstance(v, str))
+    dataframe = dataframe[mask].reset_index(drop=True)
+    dataframe["text"] = dataframe["text"].astype(str)
     return dataframe
 
 
@@ -45,7 +49,7 @@ def remove_empty_or_duplicate(dataframe: pd.DataFrame) -> pd.DataFrame:
     dataframe = dataframe[dataframe["text"].notnull() & dataframe["labels"].notnull()]
     dataframe = dataframe[dataframe["text"] != ""]
 
-    return dataframe.drop_duplicates(subset=["text", "labels"])
+    return dataframe.drop_duplicates(subset=["text"])
 
 
 def preprocess_data():
