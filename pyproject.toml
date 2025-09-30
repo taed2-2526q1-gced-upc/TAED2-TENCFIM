@@ -16,6 +16,7 @@ classifiers = [
     
 ]
 dependencies = [
+    "codecarbon>=3.0.5",
     "dagshub>=0.6.3",
     "datasets>=4.1.1",
     "dvc>=3.63.0",
