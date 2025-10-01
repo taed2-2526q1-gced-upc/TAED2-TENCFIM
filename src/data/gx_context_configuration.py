@@ -1,6 +1,6 @@
 import great_expectations as gx
 
-from src.config import INTERIM_DATA_DIR, INTERIM_DATA_NAME, RAW_DATA_DIR, RAW_DATA_NAME, ROOT_DIR
+from src.config import INTERIM_DATA_DIR, RAW_DATA_DIR, ROOT_DIR
 
 DATASOURCE_NAME = "pandas"
 RAW_DATA_ASSET = "raw_emotions"
@@ -23,21 +23,11 @@ if __name__ == "__main__":
     }
     context.update_data_docs_site("local_site", data_docs_config)
 
-    datasource = context.add_datasource(
-        name=DATASOURCE_NAME,
-        class_name="PandasDatasource"
-    )
+    datasource = context.data_sources.add_or_update_pandas(name=DATASOURCE_NAME)
 
-    raw_asset = datasource.add_parquet_asset(
-        name=RAW_DATA_ASSET,
-        filepath=RAW_DATA_DIR / RAW_DATA_NAME
-    )
-    raw_data_batch_definition = raw_asset.add_batch_definition(name="emotions_data")
-    clean_asset = datasource.add_asset(
-        asset_type="parquet",
-        name=CLEAN_DATA_ASSET,
-        filepath=INTERIM_DATA_DIR / INTERIM_DATA_NAME
-    )
+    # raw_asset = datasource.add_parquet_asset(name=RAW_DATA_ASSET, path=RAW_DATA_DIR / "raw_emotions.parquet")
+    # raw_data_batch_definition = raw_asset.add_batch_definition(name="emotions_data")
+    clean_asset = datasource.add_parquet_asset(name=CLEAN_DATA_ASSET, path=INTERIM_DATA_DIR / "emotions_cleaned.parquet")
     clean_data_batch_definition = clean_asset.add_batch_definition(name="emotions_data")
 
     expectation_suite = gx.ExpectationSuite(EXPECTATIONS_SUITE)
@@ -52,20 +42,13 @@ if __name__ == "__main__":
 
     # Validate the "labels" column
     expectation_suite.add_expectation(gx.expectations.ExpectColumnToExist(column="labels"))
-    expectation_suite.add_expectation(gx.expectations.ExpectColumnValuesToBeOfType(column="labels", type_="int"))
-    expectation_suite.add_expectation(gx.expectations.ExpectColumnValuesToBeInSet(column="labels", value_set=[0, 1]))
+    expectation_suite.add_expectation(gx.expectations.ExpectColumnValuesToBeOfType(column="labels", type_="str"))
+    expectation_suite.add_expectation(gx.expectations.ExpectColumnValuesToBeInSet(column="labels", value_set=['happiness', 'neutral', 'sadness', 'surprise', 'love', 'fear', 'confusion', 'disgust', 'desire', 'shame', 'sarcasm', 'anger', 'guilt']))
     expectation_suite.add_expectation(gx.expectations.ExpectColumnValuesToNotBeNull(column="labels"))
 
     # Only required if the suite already exists so that changes are saved
     expectation_suite.save()
 
-    # Create a validation definition to run our expectations suite
-    raw_data_validation_definition = gx.ValidationDefinition(
-        name=RAW_DATA_VALIDATOR,
-        data=raw_data_batch_definition,
-        suite=expectation_suite,
-    )
-    context.validation_definitions.add_or_update(raw_data_validation_definition)
 
     # Create a validation definition to run our expectations suite
     clean_data_validation_definition = gx.ValidationDefinition(
@@ -79,7 +62,7 @@ if __name__ == "__main__":
     action_list = [
         gx.checkpoint.UpdateDataDocsAction(name="update_data_docs"),
     ]
-    validation_definitions = [raw_data_validation_definition, clean_data_validation_definition]
+    validation_definitions = [clean_data_validation_definition]
 
     checkpoint = gx.Checkpoint(
         name=CHECKPOINT,

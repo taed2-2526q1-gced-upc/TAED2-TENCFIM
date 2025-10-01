@@ -1,5 +1,5 @@
-import click
-from datasets import load_dataset
+from pathlib import Path
+from datasets import load_dataset, Dataset
 from evaluate import load
 from loguru import logger
 import mlflow
@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import os
 from sklearn.metrics import f1_score
+import pandas as pd
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
@@ -15,8 +16,9 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
+from typing import Optional
 
-from src.config import MODELS_DIR, SEED
+from src.config import MODELS_DIR, SEED, PROCESSED_DATA_DIR
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -49,7 +51,7 @@ except Exception:
     pass
 
 SPEEDUP_TRAINING = True  # Set to True to speed up training by using a smaller dataset
-SAMPLE_SIZE = 1000  
+SAMPLE_SIZE = 2000  
 
 BATCH_SIZE = 32
 EPOCHS = 3
@@ -58,26 +60,87 @@ WEIGHT_DECAY = 0.01
 LR_SCHEDULER = "linear"
 
 
-@click.command()
-@click.argument("hf_model", type=str)
-@click.argument("model_name", type=str)
-def main(hf_model: str, model_name: str):
-    try:
-        logger.info(f"Starting training pipeline for model: {model_name}")
-        logger.info(f"Base HF model: {hf_model}")
-        _train_model(hf_model, model_name)
-    except Exception as e:
-        logger.error(f"Fatal error in main(): {str(e)}")
-        logger.error(f"Exception type: {type(e).__name__}")
-        import traceback
-        logger.error(f"Full traceback:\n{traceback.format_exc()}")
-        raise
+def _find_local_hf_model() -> Optional[str]:
+    """
+    Look for a local HF model snapshot under MODELS_DIR / 'base-model'.
+    Returns a path string to the snapshot directory if found, otherwise None.
+    """
+    local_root = Path(MODELS_DIR) / "base-model"
+    if not local_root.exists():
+        return None
+
+    # look for repo dir like 'models--Owner--repo'
+    repo_candidates = list(local_root.glob("models--*"))
+    if not repo_candidates:
+        return None
+
+    repo_dir = repo_candidates[0]
+    snapshots_dir = repo_dir / "snapshots"
+    if snapshots_dir.exists():
+        snaps = sorted([p for p in snapshots_dir.iterdir() if p.is_dir()])
+        if snaps:
+            return str(snaps[-1])
+
+    return str(repo_dir)
+
+
+def freeze_base_model(model, unfreeze_last_n: int = 2):
+    """
+    Freeze base model except the classification head.
+    Optionally unfreeze last N encoder layers (useful for RoBERTa/BERT).
+    """
+    base_attrs = ["base_model", "roberta", "bert", "distilbert", "albert",
+                  "xlm_roberta", "electra", "camembert", "deberta", "mpnet", "model"]
+    base = None
+    for attr in base_attrs:
+        base = getattr(model, attr, None)
+        if base is not None:
+            break
+
+    if base is None:
+        # fallback: freeze everything except names that look like classifier/pooler/head/score
+        for name, p in model.named_parameters():
+            if any(k in name.lower() for k in ("classifier", "pooler", "head", "score")):
+                p.requires_grad = True
+            else:
+                p.requires_grad = False
+        return
+
+    # Freeze all base params
+    for p in base.parameters():
+        p.requires_grad = False
+
+    # Try to locate encoder layers and unfreeze last N
+    encoder = getattr(base, "encoder", None) or getattr(base, "transformer", None)
+    if encoder is not None and hasattr(encoder, "layer") and unfreeze_last_n > 0:
+        layers = encoder.layer
+        n = min(unfreeze_last_n, len(layers))
+        for layer in layers[-n:]:
+            for p in layer.parameters():
+                p.requires_grad = True
+
+    # Ensure classifier/head params are trainable
+    for name, p in model.named_parameters():
+        if any(k in name.lower() for k in ("classifier", "pooler", "head", "score")):
+            p.requires_grad = True
 
 
 def _train_model(hf_model: str, model_name: str):
     # ------------------------------------------------------------------
     # Prepare tokenizer & metrics
     # ------------------------------------------------------------------
+    # -----------------------------
+    # Hyperparameters (local) --- edit here
+    # -----------------------------
+    SPEEDUP_TRAINING = True  # set to False to use the full dataset
+    SAMPLE_SIZE = 1000
+    BATCH_SIZE = 32
+    EPOCHS = 1  # only fine-tune head by default
+    LEARNING_RATE = 2e-5
+    WEIGHT_DECAY = 0.01
+    LR_SCHEDULER = "linear"
+
+    # If hf_model points to a local snapshot folder, pass that to from_pretrained
     tokenizer = AutoTokenizer.from_pretrained(hf_model)
     accuracy_metric = load("accuracy")
     f1_metric = load("f1")
@@ -102,8 +165,29 @@ def _train_model(hf_model: str, model_name: str):
     id2label = {i: lbl for i, lbl in enumerate(label_list)}
 
     def preprocess(batch):
-        tokenized = tokenizer(batch["Sentence"], truncation=True, max_length=512)
-        tokenized["labels"] = [label2id[label.lower()] for label in batch["Label"]]
+        # Accept multiple possible column names for text and label
+        text_keys = [k for k in ("Sentence", "sentence", "text") if k in batch]
+        label_keys = [k for k in ("Label", "label", "labels") if k in batch]
+
+        if not text_keys or not label_keys:
+            raise KeyError("Expected text column (Sentence/text) and label column (Label/label) in the dataset batch")
+
+        text_key = text_keys[0]
+        label_key = label_keys[0]
+
+        # batch[text_key] will be a list of strings when batched=True
+        tokenized = tokenizer(batch[text_key], truncation=True, max_length=512)
+
+        # Map label strings to ids; tolerate ints already present
+        labels_out = []
+        for lbl in batch[label_key]:
+            if isinstance(lbl, str):
+                labels_out.append(label2id[lbl.lower()])
+            else:
+                # assume already numeric
+                labels_out.append(int(lbl))
+
+        tokenized["labels"] = labels_out
         return tokenized
 
     def compute_metrics(eval_preds):
@@ -123,11 +207,16 @@ def _train_model(hf_model: str, model_name: str):
             "f1_weighted": f1_weighted["f1"]
         }
 
-    # Load Hugging Face dataset (single 'train' split) and create validation split
-    logger.info("Loading boltuix/emotions-dataset and creating validation split...")
-    raw = load_dataset("boltuix/emotions-dataset")
-    split = raw["train"].train_test_split(test_size=0.1, seed=SEED)
-    train_raw, validation_raw = split["train"], split["test"]
+    # Load processed parquet files (pandas) and convert to HF Dataset objects
+    logger.info("Loading processed parquet files and converting to HF Datasets (train, val, test)")
+    train_df = pd.read_parquet(PROCESSED_DATA_DIR / "train.parquet")
+    validation_df = pd.read_parquet(PROCESSED_DATA_DIR / "validation.parquet")
+    test_df = pd.read_parquet(PROCESSED_DATA_DIR / "test.parquet")
+
+    # Convert pandas DataFrames to Hugging Face Datasets
+    train_raw = Dataset.from_pandas(train_df.reset_index(drop=True))
+    validation_raw = Dataset.from_pandas(validation_df.reset_index(drop=True))
+    test_raw = Dataset.from_pandas(test_df.reset_index(drop=True))
 
     if SPEEDUP_TRAINING:
         logger.info("Speeding up training by sub-sampling (%d examples).", SAMPLE_SIZE)
@@ -171,8 +260,12 @@ def _train_model(hf_model: str, model_name: str):
         id2label=id2label,
         label2id={k: v for v, k in id2label.items()},
         problem_type="single_label_classification",
-        ignore_mismatched_sizes=True,  # different head than original 28-label multi-label
+        ignore_mismatched_sizes=True,
     ).to(device)
+
+    # Freeze base model so only the classification head is trained (fine-tuning)
+    freeze_base_model(model)
+    logger.info("Base model frozen; classification head will be fine-tuned.")
     
     if device == "cuda":
         logger.info(f"GPU memory after model loading: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
@@ -265,20 +358,30 @@ def _train_model(hf_model: str, model_name: str):
     logger.info("Script execution finished. Staying in WSL environment...")
 
 
+def main():
+    # Resolve local model if available, otherwise fall back to HF hub id
+    hf_model = _find_local_hf_model() or "SamLowe/roberta-base-go_emotions"
+    # Model names: roberta-emotions-v1.x --> First version: testing
+    #              roberta-emotions-v2.x --> Second version: fine tuning
+    
+    model_name = "roberta-emotions-v2.2"
+    
+    logger.info(f"Starting training pipeline for model: {model_name}")
+    logger.info(f"Base HF model (local or hub id): {hf_model}")
+    _train_model(hf_model, model_name)
+
+
 if __name__ == "__main__":
     try:
         logger.info("Script starting...")
         main()
-        logger.success("Script completed successfully. Press any key to continue...")
-        input()  # Wait for user input to prevent immediate exit
+        logger.success("Script completed successfully.")
     except KeyboardInterrupt:
         logger.warning("Script interrupted by user (Ctrl+C)")
     except Exception as e:
         logger.error(f"Unhandled exception in main execution: {str(e)}")
         import traceback
         logger.error(f"Full traceback:\n{traceback.format_exc()}")
-        logger.error("Press any key to exit...")
-        input()  # Wait before exiting so user can see the error
     finally:
         logger.info("Cleaning up and exiting...")
 
