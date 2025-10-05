@@ -92,5 +92,5 @@ fluent_datasources:
             id: 84dc98cb-c8fc-414e-99b5-021326345ed2
             partitioner:
         path: /home/arnpo/TAED2-TENCFIM/data/interim/emotions_cleaned.parquet
-analytics_enabled:
+analytics_enabled: false  
 data_context_id: cea01b5a-db99-4143-b14e-f1c49662d8f3
