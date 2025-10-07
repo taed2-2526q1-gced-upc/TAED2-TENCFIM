@@ -1,0 +1,22 @@
+{
+  "data": {
+    "asset": {
+      "id": "a15d81f7-13ae-46df-9684-de6db63ca7b0",
+      "name": "clean_emotions"
+    },
+    "batch_definition": {
+      "id": "84dc98cb-c8fc-414e-99b5-021326345ed2",
+      "name": "emotions_data"
+    },
+    "datasource": {
+      "id": "bd8b8171-650c-46d6-81d4-86fa1fe30ec3",
+      "name": "pandas"
+    }
+  },
+  "id": "544c48f9-824a-4bd0-b10d-1d68c8f4747d",
+  "name": "clean_data_validator",
+  "suite": {
+    "id": "f28a929f-c182-49e7-a0ec-182e4961f094",
+    "name": "data_quality_validation"
+  }
+}

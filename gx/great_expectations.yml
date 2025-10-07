@@ -8,17 +8,7 @@
 
 # config_version refers to the syntactic version of this config file, and is used in maintaining backwards compatibility
 # It is auto-generated and usually does not need to be changed.
-config_version: 3.0
-
-# Datasources tell Great Expectations where your data lives and how to get it.
-# Read more at https://docs.greatexpectations.io/docs/guides/connecting_to_your_data/connect_to_data_overview
-datasources:
-  pandas:
-    class_name: PandasDatasource
-    module_name: great_expectations.datasource
-    data_asset_type:
-      class_name: PandasDataset
-      module_name: great_expectations.dataset
+config_version: 4.0
 
 # This config file supports variable substitution which enables: 1) keeping
 # secrets out of source control & 2) environment-based configuration changes
@@ -48,24 +38,18 @@ stores:
 # Stores are configurable places to store things like Expectations, Validations
 # Data Docs, and more. These are for advanced users only - most users can simply
 # leave this section alone.
-#
-# Three stores are required: expectations, validations, and
-# evaluation_parameters, and must exist with a valid store entry. Additional
-# stores can be configured for uses such as data_docs, etc.
   expectations_store:
     class_name: ExpectationsStore
     store_backend:
       class_name: TupleFilesystemStoreBackend
       base_directory: expectations/
 
-  validations_store:
-    class_name: ValidationsStore
+  validation_results_store:
+    class_name: ValidationResultsStore
     store_backend:
       class_name: TupleFilesystemStoreBackend
       base_directory: uncommitted/validations/
 
-  evaluation_parameter_store:
-    class_name: EvaluationParameterStore
   checkpoint_store:
     class_name: CheckpointStore
     store_backend:
@@ -73,16 +57,14 @@ stores:
       suppress_store_backend_id: true
       base_directory: checkpoints/
 
-  profiler_store:
-    class_name: ProfilerStore
+  validation_definition_store:
+    class_name: ValidationDefinitionStore
     store_backend:
       class_name: TupleFilesystemStoreBackend
-      suppress_store_backend_id: true
-      base_directory: profilers/
+      base_directory: validation_definitions/
 
 expectations_store_name: expectations_store
-validations_store_name: validations_store
-evaluation_parameter_store_name: evaluation_parameter_store
+validation_results_store_name: validation_results_store
 checkpoint_store_name: checkpoint_store
 
 data_docs_sites:
@@ -97,14 +79,18 @@ data_docs_sites:
     store_backend:
       class_name: TupleFilesystemStoreBackend
       base_directory: data_docs
-anonymous_usage_statistics:
-  data_context_id: 50af0e16-a955-4a0a-b077-6fb9fa3d1c96
-  enabled: true
 fluent_datasources:
   pandas:
     type: pandas
-notebooks:
-include_rendered_content:
-  globally: false
-  expectation_suite: false
-  expectation_validation_result: false
+    id: bd8b8171-650c-46d6-81d4-86fa1fe30ec3
+    assets:
+      clean_emotions:
+        type: parquet
+        id: a15d81f7-13ae-46df-9684-de6db63ca7b0
+        batch_definitions:
+          emotions_data:
+            id: 84dc98cb-c8fc-414e-99b5-021326345ed2
+            partitioner:
+        path: /home/arnpo/TAED2-TENCFIM/data/interim/emotions_cleaned.parquet
+analytics_enabled:
+data_context_id: cea01b5a-db99-4143-b14e-f1c49662d8f3
