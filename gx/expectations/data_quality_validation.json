@@ -1,7 +1,7 @@
 {
   "expectations": [
     {
-      "id": "5758ca06-6689-4d07-9f8c-20a477437982",
+      "id": "0605cd30-6f97-4b7b-8e99-443e5bfdaff3",
       "kwargs": {
         "column": "text"
       },
@@ -9,7 +9,7 @@
       "type": "expect_column_to_exist"
     },
     {
-      "id": "29af32bf-7e72-4e22-99e6-700854e64eb8",
+      "id": "b8a2544f-41b9-4804-a1c9-fc0719612447",
       "kwargs": {
         "column": "text",
         "type_": "str"
@@ -18,7 +18,7 @@
       "type": "expect_column_values_to_be_of_type"
     },
     {
-      "id": "871f8675-6fcc-4425-9399-12e114a55183",
+      "id": "ca2d9a7b-a553-4aa5-b3c0-ccaf361b220b",
       "kwargs": {
         "column": "text"
       },
@@ -26,7 +26,7 @@
       "type": "expect_column_values_to_be_unique"
     },
     {
-      "id": "588be4e8-41eb-4978-92fe-4dde53d3fb45",
+      "id": "0ce33158-9d4e-4779-8eab-84a30babdd3b",
       "kwargs": {
         "column": "text"
       },
@@ -34,7 +34,7 @@
       "type": "expect_column_values_to_not_be_null"
     },
     {
-      "id": "b4004044-85bb-4e5c-8190-0eb1a5d25f85",
+      "id": "c62836da-5b72-479e-a913-5e4ba248ec88",
       "kwargs": {
         "column": "labels"
       },
@@ -42,7 +42,7 @@
       "type": "expect_column_to_exist"
     },
     {
-      "id": "04632324-c221-4617-be77-6b43671497f0",
+      "id": "6bcb58a5-3a76-4701-b139-f298c935d3bc",
       "kwargs": {
         "column": "labels",
         "type_": "str"
@@ -51,7 +51,7 @@
       "type": "expect_column_values_to_be_of_type"
     },
     {
-      "id": "aefbf859-917e-477e-9f49-2ae4d687375e",
+      "id": "cf4ed658-d0d3-4eeb-b40c-d65de621b37f",
       "kwargs": {
         "column": "labels",
         "value_set": [
@@ -74,7 +74,7 @@
       "type": "expect_column_values_to_be_in_set"
     },
     {
-      "id": "72465b74-98ff-4612-b1a0-604fed49b1f7",
+      "id": "e41ad0b5-b1d9-47fa-aad4-e8004b1a1ec8",
       "kwargs": {
         "column": "labels"
       },

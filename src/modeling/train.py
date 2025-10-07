@@ -382,7 +382,7 @@ if __name__ == "__main__":
         logger.error(f"Unhandled exception in main execution: {str(e)}")
         import traceback
         logger.error(f"Full traceback:\n{traceback.format_exc()}")
-    finally:
+c    finally:
         logger.info("Cleaning up and exiting...")
 
 #python src/modeling/train.py SamLowe/roberta-base-go_emotions roberta-emotions-13

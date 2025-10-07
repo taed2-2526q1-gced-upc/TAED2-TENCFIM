@@ -1,11 +1,11 @@
 {
   "data": {
     "asset": {
-      "id": "a15d81f7-13ae-46df-9684-de6db63ca7b0",
+      "id": "64fbc334-be61-497f-afe4-35f748b952ff",
       "name": "clean_emotions"
     },
     "batch_definition": {
-      "id": "84dc98cb-c8fc-414e-99b5-021326345ed2",
+      "id": "e3ca5a6f-77e6-44f0-9180-95fae34de93f",
       "name": "emotions_data"
     },
     "datasource": {

@@ -86,11 +86,12 @@ fluent_datasources:
     assets:
       clean_emotions:
         type: parquet
-        id: a15d81f7-13ae-46df-9684-de6db63ca7b0
+        id: 64fbc334-be61-497f-afe4-35f748b952ff
         batch_definitions:
           emotions_data:
-            id: 84dc98cb-c8fc-414e-99b5-021326345ed2
+            id: e3ca5a6f-77e6-44f0-9180-95fae34de93f
             partitioner:
-        path: /home/arnpo/TAED2-TENCFIM/data/interim/emotions_cleaned.parquet
+        path: 
+          /home/guillemgarrido/taed2/TAED2-TENCFIM/data/interim/emotions_cleaned.parquet
 analytics_enabled:
 data_context_id: cea01b5a-db99-4143-b14e-f1c49662d8f3
