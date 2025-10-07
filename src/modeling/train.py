@@ -20,6 +20,7 @@ from typing import Optional
 
 from src.config import MODELS_DIR, SEED, PROCESSED_DATA_DIR
 from dotenv import load_dotenv
+from codecarbon import EmissionsTracker
 load_dotenv()
 
 # ------------------------------------------------------------------
@@ -51,7 +52,7 @@ except Exception:
     pass
 
 SPEEDUP_TRAINING = True  # Set to True to speed up training by using a smaller dataset
-SAMPLE_SIZE = 2000  
+SAMPLE_SIZE = 5000  
 
 BATCH_SIZE = 32
 EPOCHS = 3
@@ -133,9 +134,9 @@ def _train_model(hf_model: str, model_name: str):
     # Hyperparameters (local) --- edit here
     # -----------------------------
     SPEEDUP_TRAINING = True  # set to False to use the full dataset
-    SAMPLE_SIZE = 1000
+    SAMPLE_SIZE = 60000
     BATCH_SIZE = 32
-    EPOCHS = 1  # only fine-tune head by default
+    EPOCHS = 4  # only fine-tune head by default
     LEARNING_RATE = 2e-5
     WEIGHT_DECAY = 0.01
     LR_SCHEDULER = "linear"
@@ -364,11 +365,12 @@ def main():
     # Model names: roberta-emotions-v1.x --> First version: testing
     #              roberta-emotions-v2.x --> Second version: fine tuning
     
-    model_name = "roberta-emotions-v2.2"
+    model_name = "roberta-emotions-v2.8"
     
     logger.info(f"Starting training pipeline for model: {model_name}")
     logger.info(f"Base HF model (local or hub id): {hf_model}")
-    _train_model(hf_model, model_name)
+    with EmissionsTracker() as tracker:
+        _train_model(hf_model, model_name)
 
 
 if __name__ == "__main__":
