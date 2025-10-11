@@ -85,7 +85,7 @@ def root():
 
 
 @app.post("/prediction", response_model=List[PredictionResponse])
-def predict_emotion(request: PredictionRequest) -> List[PredictionResponse]:
+async def predict_emotion(request: PredictionRequest) -> List[PredictionResponse]:
     """
     Predict the emotion(s) expressed in one or more text inputs.
 
@@ -144,8 +144,11 @@ def predict_emotion(request: PredictionRequest) -> List[PredictionResponse]:
         return response_list
 
     except ValueError as ve:
-        logger.error(f"Value error during prediction: {ve}")
-        raise HTTPException(status_code=400, detail=f"Bad Request: {ve}") from ve
+        logger.warning(f"Invalid input: {ve}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid input: {ve}. Expected a JSON body with 'text' or 'texts' fields."
+        )
     except HTTPException:
         raise
     except Exception as exc:

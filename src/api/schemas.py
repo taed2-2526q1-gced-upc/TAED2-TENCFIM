@@ -6,7 +6,7 @@ from src.config import MODELS_DIR, PROD_MODEL
 MAX_TEXT_TOKENS = 512
 
 
-class Review(BaseModel):
+class Sentence(BaseModel):
     """
     Schema representing a single text input (sentence)
     to be classified by the emotion model.
@@ -33,6 +33,7 @@ class Review(BaseModel):
         ValueError
             If the input exceeds MAX_TEXT_TOKENS after tokenization.
         """
+        
         tokenizer = AutoTokenizer.from_pretrained(MODELS_DIR / PROD_MODEL)
         input_len = len(tokenizer.encode(input))
 
@@ -54,7 +55,7 @@ class PredictionRequest(BaseModel):
     """
 
     text: Union[str, None] = None
-    texts: Union[List[Review], None] = None
+    texts: Union[List[Sentence], None] = None
 
     @field_validator("texts", "text", mode="before")
     @classmethod
