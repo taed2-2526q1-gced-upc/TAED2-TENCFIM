@@ -6,7 +6,7 @@ from src.config import MODELS_DIR, PROD_MODEL
 MAX_TEXT_TOKENS = 512
 
 
-class Review(BaseModel):
+class Sentence(BaseModel):
     """
     Schema representing a single text input (sentence)
     to be classified by the emotion model.
@@ -33,6 +33,7 @@ class Review(BaseModel):
         ValueError
             If the input exceeds MAX_TEXT_TOKENS after tokenization.
         """
+        
         tokenizer = AutoTokenizer.from_pretrained(MODELS_DIR / PROD_MODEL)
         input_len = len(tokenizer.encode(input))
 
@@ -48,15 +49,12 @@ class PredictionRequest(BaseModel):
     """
     Input schema for emotion prediction requests.
 
-    Accepts either:
-    - A single text object: {"text": "I love this!"}
-    - Or a list of text objects: {"texts": ["I love this!", "This is awful"]}
+    Accepts a list of text objects: {"texts": ["I love this!", "This is awful"]}
     """
+    
+    texts: Union[List[Sentence], None] = None
 
-    text: Union[str, None] = None
-    texts: Union[List[Review], None] = None
-
-    @field_validator("texts", "text", mode="before")
+    @field_validator("texts", mode="before")
     @classmethod
     def ensure_non_empty(cls, value):
         if value is None or (isinstance(value, list) and not value):
