@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 from datasets import load_dataset
 import evaluate
 from transformers import pipeline
@@ -21,10 +22,16 @@ ID2LABEL = {i: lbl for i, lbl in enumerate(LABEL_LIST)}
 @pytest.fixture(scope="module")
 def pipe():
     """Load trained text classification pipeline."""
+    model_path = Path(MODELS_DIR) / MODEL_NAME
+    if not model_path.exists():
+        pytest.skip(f"Local model not found at {model_path}; skipping model tests.")
+
+    # Prefer loading from local files only to avoid hub validation/download attempts
     return pipeline(
         "text-classification",
-        model=str(MODELS_DIR / MODEL_NAME),
-        tokenizer=str(MODELS_DIR / MODEL_NAME)
+        model=str(model_path),
+        tokenizer=str(model_path),
+        local_files_only=True,
     )
 
 
