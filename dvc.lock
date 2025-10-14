@@ -54,7 +54,7 @@ stages:
       md5: d15ed416b6539992a8461ba56623ce20
       size: 1659762
   train:
-    cmd: python -m src.modeling.train SamLowe/roberta-base-go_emotions roberta-emotions-13
+    cmd: python -m src.modeling.train
     deps:
     - path: data/processed/test.parquet
       hash: md5
@@ -70,6 +70,5 @@ stages:
       size: 1659762
     - path: src/modeling/train.py
       hash: md5
-      md5: 62a44e03d44b0c01f89ca5739a4c5cbb
-      size: 10894
-
+      md5: 5d67a4c79363f4d77248210a4ec589fb
+      size: 15588

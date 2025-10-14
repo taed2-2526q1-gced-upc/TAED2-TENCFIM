@@ -1,3 +1,4 @@
+
 # Welcome to Great Expectations! Always know what to expect from your data.
 #
 # Here you can define datasources, batch kwargs generators, integrations and
@@ -8,7 +9,7 @@
 
 # config_version refers to the syntactic version of this config file, and is used in maintaining backwards compatibility
 # It is auto-generated and usually does not need to be changed.
-config_version: 4.0
+config_version: 4
 
 # This config file supports variable substitution which enables: 1) keeping
 # secrets out of source control & 2) environment-based configuration changes
@@ -74,23 +75,10 @@ data_docs_sites:
   # profiles from the uncommitted directory. Read more at https://docs.greatexpectations.io/docs/terms/data_docs
   local_site:
     class_name: SiteBuilder
-    site_index_builder:
-      class_name: DefaultSiteIndexBuilder
+    # set to false to hide how-to buttons in Data Docs
+    show_how_to_buttons: true
     store_backend:
-      class_name: TupleFilesystemStoreBackend
-      base_directory: data_docs
-fluent_datasources:
-  pandas:
-    type: pandas
-    id: bd8b8171-650c-46d6-81d4-86fa1fe30ec3
-    assets:
-      clean_emotions:
-        type: parquet
-        id: ba1dc39e-2756-4442-abd4-4bb1526d5812
-        batch_definitions:
-          emotions_data:
-            id: aa2aeca1-a67f-430b-9c7e-0498bf22414b
-            partitioner:
-        path: C:\Users\mique\OneDrive\Escritorio\UNI\Cuarto\TAED2\Lab\repo-TAED2-TENCFIM\TAED2-TENCFIM\data\interim\emotions_cleaned.parquet
-analytics_enabled: false
-data_context_id: cea01b5a-db99-4143-b14e-f1c49662d8f3
+        class_name: TupleFilesystemStoreBackend
+        base_directory: uncommitted/data_docs/local_site/
+    site_index_builder:
+        class_name: DefaultSiteIndexBuilder
