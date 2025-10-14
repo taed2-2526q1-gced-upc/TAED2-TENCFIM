@@ -1,4 +1,3 @@
-
 # Welcome to Great Expectations! Always know what to expect from your data.
 #
 # Here you can define datasources, batch kwargs generators, integrations and
@@ -9,7 +8,7 @@
 
 # config_version refers to the syntactic version of this config file, and is used in maintaining backwards compatibility
 # It is auto-generated and usually does not need to be changed.
-config_version: 4
+config_version: 4.0
 
 # This config file supports variable substitution which enables: 1) keeping
 # secrets out of source control & 2) environment-based configuration changes
@@ -75,10 +74,23 @@ data_docs_sites:
   # profiles from the uncommitted directory. Read more at https://docs.greatexpectations.io/docs/terms/data_docs
   local_site:
     class_name: SiteBuilder
-    # set to false to hide how-to buttons in Data Docs
-    show_how_to_buttons: true
-    store_backend:
-        class_name: TupleFilesystemStoreBackend
-        base_directory: uncommitted/data_docs/local_site/
     site_index_builder:
-        class_name: DefaultSiteIndexBuilder
+      class_name: DefaultSiteIndexBuilder
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      base_directory: data_docs
+fluent_datasources:
+  pandas:
+    type: pandas
+    id: 8951fa34-1cb6-4b93-9d82-6ae9dc32cba1
+    assets:
+      clean_emotions:
+        type: parquet
+        id: 828519c9-f166-4d75-9456-58e6b1108b00
+        batch_definitions:
+          emotions_data:
+            id: 46389448-854a-4ecb-8e7c-9b11995c2d28
+            partitioner:
+        path: /home/bielbo/Documents/GCED/TAED2/TAED2-TENCFIM/data/interim/emotions_cleaned.parquet
+analytics_enabled:
+data_context_id: 39c01d5e-4392-4b85-97e5-664635f63de7

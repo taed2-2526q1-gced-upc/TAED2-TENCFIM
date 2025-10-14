@@ -1,0 +1,91 @@
+{
+  "expectations": [
+    {
+      "id": "d10d90a3-ce11-4266-a530-4ddfd3446a24",
+      "kwargs": {
+        "column": "text"
+      },
+      "meta": {},
+      "type": "expect_column_to_exist"
+    },
+    {
+      "id": "b95cec8d-10bd-46f4-956d-cc2155594898",
+      "kwargs": {
+        "column": "text",
+        "type_": "str"
+      },
+      "meta": {},
+      "type": "expect_column_values_to_be_of_type"
+    },
+    {
+      "id": "3098b7d7-4520-4135-bc2e-9b1c93c1304c",
+      "kwargs": {
+        "column": "text"
+      },
+      "meta": {},
+      "type": "expect_column_values_to_be_unique"
+    },
+    {
+      "id": "6161d284-645d-4f58-9c2c-b2e7d29b2489",
+      "kwargs": {
+        "column": "text"
+      },
+      "meta": {},
+      "type": "expect_column_values_to_not_be_null"
+    },
+    {
+      "id": "efbf2084-0b50-469f-8232-dd15ee6eba6f",
+      "kwargs": {
+        "column": "labels"
+      },
+      "meta": {},
+      "type": "expect_column_to_exist"
+    },
+    {
+      "id": "11d2bb87-5d8d-44d8-8268-e198230552ac",
+      "kwargs": {
+        "column": "labels",
+        "type_": "str"
+      },
+      "meta": {},
+      "type": "expect_column_values_to_be_of_type"
+    },
+    {
+      "id": "70451bd3-cd66-4725-a672-31ebde2df103",
+      "kwargs": {
+        "column": "labels",
+        "value_set": [
+          "happiness",
+          "neutral",
+          "sadness",
+          "surprise",
+          "love",
+          "fear",
+          "confusion",
+          "disgust",
+          "desire",
+          "shame",
+          "sarcasm",
+          "anger",
+          "guilt"
+        ]
+      },
+      "meta": {},
+      "type": "expect_column_values_to_be_in_set"
+    },
+    {
+      "id": "470e159a-6ed7-42f5-b05a-2c2c09dea5a8",
+      "kwargs": {
+        "column": "labels"
+      },
+      "meta": {},
+      "type": "expect_column_values_to_not_be_null"
+    }
+  ],
+  "id": "61d423b3-1c91-4379-b1b5-0b12852fcd92",
+  "meta": {
+    "great_expectations_version": "1.5.8"
+  },
+  "name": "data_quality_validation",
+  "notes": null
+}
