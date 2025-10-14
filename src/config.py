@@ -29,7 +29,7 @@ TESTS_DIR = ROOT_DIR / "tests"
 REPORTS_DIR = ROOT_DIR / "reports"
 
 MODELS_DIR = ROOT_DIR / "models"
-PROD_MODEL = "distilbert-sst-imdb"
+PROD_MODEL = "roberta-emotions-v2.2"
 
 SEED = 2025
 TRAIN_SPLIT = 0.7

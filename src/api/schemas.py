@@ -1,72 +1,78 @@
 from pydantic import BaseModel, field_validator
+from typing import List, Union
 from transformers import AutoTokenizer
-
 from src.config import MODELS_DIR, PROD_MODEL
 
-MAX_REVIEW_TOKENS = 512
+MAX_TEXT_TOKENS = 512
 
 
-class Review(BaseModel):
-    review: str
+class Sentence(BaseModel):
+    """
+    Schema representing a single text input (sentence)
+    to be classified by the emotion model.
+    """
+    text: str
 
-    @field_validator("review")
+    @field_validator("text")
     @classmethod
     def check_string_length(cls, input: str) -> str:
         """
-        Validator to ensure that the input review string does not exceed the
-        maximum ammount of tokens.
+        Ensure that the input text does not exceed the maximum number of tokens.
 
         Parameters
         ----------
         input : str
-            The input review string to be validated.
+            The input text.
         Returns
         -------
         str
-            The validated input review string.
+            The validated input string.
 
         Raises
         ------
         ValueError
-            If the input review string exceeds the maximum number of tokens.
+            If the input exceeds MAX_TEXT_TOKENS after tokenization.
         """
-
+        
         tokenizer = AutoTokenizer.from_pretrained(MODELS_DIR / PROD_MODEL)
         input_len = len(tokenizer.encode(input))
-        # input_len = len(input)
 
-        if input_len > MAX_REVIEW_TOKENS:
+        if input_len > MAX_TEXT_TOKENS:
             raise ValueError(
-                f"The input review exceeds with {input_len} the " + f"maximum number of {MAX_REVIEW_TOKENS} tokens."
+                f"The input text contains {input_len} tokens, "
+                f"which exceeds the maximum allowed ({MAX_TEXT_TOKENS})."
             )
-
         return input
 
 
 class PredictionRequest(BaseModel):
     """
-    A Pydantic model that represents the input schema for the review to be predicted.
+    Input schema for emotion prediction requests.
 
-    Attributes
-    -----------
-        reviews list[Review]: A list of Review objects containing the review text to be predicted.
-
+    Accepts a list of text objects: {"texts": ["I love this!", "This is awful"]}
     """
+    
+    texts: Union[List[Sentence], None] = None
 
-    reviews: list[Review]
+    @field_validator("texts", mode="before")
+    @classmethod
+    def ensure_non_empty(cls, value):
+        if value is None or (isinstance(value, list) and not value):
+            raise ValueError("At least one text must be provided.")
+        return value
 
 
 class PredictionResponse(BaseModel):
     """
-    A Pydantic model that represents the output schema for the review prediction.
+    Output schema for emotion classification predictions.
 
     Attributes
     -----------
-        review (str): The review text provided by the user.
-        label (str): The predicted sentiment label ('Positive' or 'Negative').
-        score (float): The confidence score of the prediction.
+    text (str): Original input text.
+    label (str): Predicted emotion label (e.g. 'Happiness', 'Sadness', etc.).
+    score (float): Model confidence score between 0 and 1.
     """
 
-    review: str
+    text: str
     label: str
     score: float

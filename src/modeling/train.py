@@ -7,6 +7,20 @@ import dagshub
 import numpy as np
 import torch
 import os
+import sys
+
+# Use UTF-8 encoding for stdout/stderr to avoid UnicodeEncodeError on Windows
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    # some environments don't support reconfigure (py39 minimal)
+    pass
+
+# Take out colors and emojis from rich logs (loguru uses rich under the hood)
+os.environ["RICH_NO_COLOR"] = "1"
+os.environ["RICH_NO_EMOJI"] = "1"
+
 from sklearn.metrics import f1_score
 import pandas as pd
 from transformers import (
@@ -16,7 +30,19 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
-from typing import Optional
+from typing import Optional, Dict, Any
+
+# Optional integrations
+try:
+    from codecarbon import EmissionsTracker
+except Exception: # pragma: no cover - optional dependency
+    EmissionsTracker = None
+
+
+try:
+    import great_expectations as gx # type: ignore
+except Exception: # pragma: no cover - optional dependency
+    gx = None
 
 from src.config import MODELS_DIR, SEED, PROCESSED_DATA_DIR
 from dotenv import load_dotenv
@@ -55,7 +81,7 @@ SPEEDUP_TRAINING = True  # Set to True to speed up training by using a smaller d
 SAMPLE_SIZE = 5000  
 
 BATCH_SIZE = 32
-EPOCHS = 3
+EPOCHS = 5
 LEARNING_RATE = 2e-5
 WEIGHT_DECAY = 0.01
 LR_SCHEDULER = "linear"
@@ -265,7 +291,7 @@ def _train_model(hf_model: str, model_name: str):
     ).to(device)
 
     # Freeze base model so only the classification head is trained (fine-tuning)
-    freeze_base_model(model)
+    freeze_base_model(model, 4)  # unfreeze last 4 layers
     logger.info("Base model frozen; classification head will be fine-tuned.")
     
     if device == "cuda":
@@ -273,7 +299,7 @@ def _train_model(hf_model: str, model_name: str):
 
     trainer = Trainer(
         model=model,
-        processing_class=tokenizer,
+        tokenizer=tokenizer,
         data_collator=data_collator,
         args=training_args,
         train_dataset=train_ds,
@@ -384,7 +410,7 @@ if __name__ == "__main__":
         logger.error(f"Unhandled exception in main execution: {str(e)}")
         import traceback
         logger.error(f"Full traceback:\n{traceback.format_exc()}")
-    finally:
+c    finally:
         logger.info("Cleaning up and exiting...")
 
 #python src/modeling/train.py SamLowe/roberta-base-go_emotions roberta-emotions-13
