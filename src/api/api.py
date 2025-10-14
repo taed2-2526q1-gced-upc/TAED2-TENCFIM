@@ -150,7 +150,8 @@ async def predict_emotion(request: PredictionRequest) -> List[SingleClassRespons
         response_list: List[SingleClassResponse] = []
         for text, pred in zip(texts, predictions):
             label = pred.get("label", "Unknown") if isinstance(pred, dict) else "Unknown"
-            score = float(pred.get("score", 0.0)) if isinstance(pred, dict) else 0.0
+            score = float(pred.get("score", 0.00)) if isinstance(pred, dict) else 0.00
+            score=round(score, 2) # show only 2 decimals
             response_list.append(SingleClassResponse(text=text, label=label, score=score))
 
         return response_list
@@ -226,7 +227,7 @@ async def predict_emotion_multiclass(request: PredictionRequest) -> List[MultiCl
         for text, pred_list in zip(texts, predictions):
             # ordenar por score descendente y quedarse con top 3
             top3 = sorted(pred_list, key=lambda x: x['score'], reverse=True)[:3]
-            label_scores = {p['label']: float(p['score']) for p in top3}
+            label_scores = {p['label']: round(float(p['score']), 2) for p in top3}
             response_list.append(MultiClassResponse(text=text, predictions=label_scores))
 
         return response_list
@@ -375,6 +376,7 @@ async def predict_emotion_basic(request: PredictionRequest) -> List[SingleClassR
         for text, pred in zip(texts, predictions):
             original_label = pred.get("label", "Unknown") if isinstance(pred, dict) else "Unknown"
             score = float(pred.get("score", 0.0)) if isinstance(pred, dict) else 0.0
+            score=round(score, 2) # show only 2 decimals
 
             # map emotion predicted to postive/negative/neutral case
             basic_label = MAP_EMOTIONS.get(original_label, "Neutral")
