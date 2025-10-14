@@ -3,6 +3,26 @@ from loguru import logger
 from sklearn.model_selection import train_test_split
 from src.config import INTERIM_DATA_DIR, INTERIM_DATA_NAME, PROCESSED_DATA_DIR, SEED, TRAIN_SPLIT, VALIDATION_SPLIT, TEST_SPLIT
 
+def create_split_dataframes(df: pd.DataFrame):
+    """ Given a dataframe, split it into train, validation, and test dataframes"""
+    
+    train_df, temp_df = train_test_split(
+        df,
+        test_size=(1 - TRAIN_SPLIT),
+        stratify=df["labels"],                  # ensures that the split contains the same proportion
+        random_state=SEED                      # of labels that were in the original df
+    )
+
+    validation_size = VALIDATION_SPLIT / (VALIDATION_SPLIT + TEST_SPLIT)
+
+    validation_df, test_df = train_test_split(
+        temp_df,
+        test_size=(1 - validation_size),
+        stratify=temp_df["labels"],
+        random_state=SEED
+    )
+    
+    return train_df, validation_df, test_df
 
 def split_data():
     """
@@ -22,22 +42,7 @@ def split_data():
         return
 
     try:
-        train_df, temp_df = train_test_split(
-            df,
-            test_size=(1 - TRAIN_SPLIT),
-            stratify=df["labels"],                  # ensures that the split contains the same proportion
-            random_state=SEED                      # of labels that were in the original df
-        )
-
-        validation_size = VALIDATION_SPLIT / (VALIDATION_SPLIT + TEST_SPLIT)
-
-        validation_df, test_df = train_test_split(
-            temp_df,
-            test_size=(1 - validation_size),
-            stratify=temp_df["labels"],
-            random_state=SEED
-        )
-
+        train_df, validation_df, test_df = create_split_dataframes(df)
     except Exception as e:
         logger.error(f"Error during stratified splitting: {e}")
         return
