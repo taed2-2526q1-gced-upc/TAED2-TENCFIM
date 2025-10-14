@@ -1,139 +1,149 @@
 import pandas as pd
 from pathlib import Path
 import types
-
-import pytest
-
+from pytest import fixture
+from src.config import ROOT_DIR
+from src.data.gx_context_configuration import CLEAN_DATA_VALIDATOR
 from src.data import preprocess, download_raw_dataset, split_data, gx_context_configuration, validate_data
-from src import config
+import great_expectations as gx
+from great_expectations import ValidationDefinition
+
+#FIxtures. Mirar que comleixi totes les de gx.
+#Mirar que les columnes estiguin totes
 
 
+# Test GX expectations
+@fixture
+def clean_data_validator() -> ValidationDefinition:
+    """ Fixture to provide the Great Expectations ValidationDefinition for clean data validation."""
+    
+    context = gx.get_context(mode="file", project_root_dir=ROOT_DIR)
+    return context.validation_definitions.get(CLEAN_DATA_VALIDATOR)
+
+@fixture
 def make_sample_df():
+    """ Makes a sample dataframe with some dirty data"""
     return pd.DataFrame(
         {
-            "Sentence": ["Hello\nworld", "  space  ", "", None, "dup", "dup"],
-            "Label": ["Happiness", "Sadness", "Neutral", "Anger", "Love", "Love"],
+            "text": ["Hello\nworld", "  space  ", "", None, "dup", "dup"],
+            "labels": ["Happiness", "Sadness", "Neutral", "Anger", "Love", "Love"],
+        }
+    )
+    
+@fixture
+def make_clean_sample_df():
+    """ Makes a clean dataframe with 10 rows"""
+    
+    return pd.DataFrame(
+        {
+            "text": [
+                "Hello world",
+                "Good morning",
+                "I love this",
+                "So sad",
+                "Neutral statement",
+                "Angry reply",
+                "Another happy",
+                "Calm and neutral",
+                "Repeated",
+                "Unique thought",
+            ],
+            "labels": [
+                "Happiness",
+                "Happiness",
+                "Love",
+                "Love",
+                "Happiness",
+                "Love",
+                "Love",
+                "Happiness",
+                "Love",
+                "Happiness",
+            ],
         }
     )
 
+def test_clean_data(clean_data_validator: ValidationDefinition):
+    """ Test that the clean data meets all Great Expectations defined in the validator."""
+    
+    validation_result = clean_data_validator.run(result_format="BOOLEAN_ONLY")
 
-def test_sanitize_and_remove_empty_or_duplicate(tmp_path):
-    df = make_sample_df().rename(columns={"Sentence": "text", "Label": "labels"})
+    expectations_failed = validation_result["statistics"]["unsuccessful_expectations"]
 
-    sanitized = preprocess.sanitize_text(df.copy())
-    assert all("\n" not in t for t in sanitized["text"])  # newlines removed
-    assert sanitized["text"].str.len().min() >= 0
+    assert expectations_failed == 0, f"There were {expectations_failed} failing expectations."
 
-    cleaned = preprocess.remove_empty_or_duplicate(sanitized.copy())
-    assert "" not in cleaned["text"].values
-    assert cleaned["text"].duplicated().sum() == 0
-
-
-def test_preprocess_data_writes_interim(tmp_path, monkeypatch):
-    df = make_sample_df()
-    # make preprocess module use our tmp paths and stub pd.read_parquet
-    monkeypatch.setattr(preprocess, "pd", preprocess.pd)
-    monkeypatch.setattr("src.data.preprocess.pd.read_parquet", lambda path: df)
-
-    monkeypatch.setattr(preprocess, "RAW_DATA_DIR", tmp_path / "raw")
-    monkeypatch.setattr(preprocess, "RAW_DATA_NAME", "raw_emotions.parquet")
-    monkeypatch.setattr(preprocess, "INTERIM_DATA_DIR", tmp_path / "interim")
-    monkeypatch.setattr(preprocess, "INTERIM_DATA_NAME", "emotions_cleaned.parquet")
-
-    preprocess.preprocess_data()
-
-    out = Path(preprocess.INTERIM_DATA_DIR) / preprocess.INTERIM_DATA_NAME
-    assert out.exists()
-    df_out = pd.read_parquet(out)
-    assert "Sentence" in df_out.columns and "Label" in df_out.columns
-
-
-def test_download_dataset_writes_parquet(tmp_path, monkeypatch):
-    sample = pd.DataFrame({"Sentence": ["a"], "Label": ["Happiness"]})
-    monkeypatch.setattr("src.data.download_raw_dataset.pd.read_parquet", lambda path: sample)
-
-    # Make the download_raw_dataset module write into tmp_path
-    monkeypatch.setattr(download_raw_dataset, "RAW_DATA_DIR", tmp_path / "raw")
-    monkeypatch.setattr(download_raw_dataset, "RAW_DATA_NAME", "raw_emotions.parquet")
-
+def test_download_raw_dataset():
+    """ Test the download of the raw dataset."""
+    
     download_raw_dataset.download_dataset()
-
     out = Path(download_raw_dataset.RAW_DATA_DIR) / download_raw_dataset.RAW_DATA_NAME
     assert out.exists()
     df = pd.read_parquet(out)
     assert "Sentence" in df.columns and "Label" in df.columns
 
+def test_preprocess_data():
+    """ Test the preprocessing of the raw dataset."""
+    
+    preprocess.preprocess_data()
 
-def test_split_data_creates_processed_files(tmp_path, monkeypatch):
-    df = pd.DataFrame({
-        "text": [f"t{i}" for i in range(20)],
-        "labels": ["A", "B"] * 10,
-    })
+    out = Path(preprocess.INTERIM_DATA_DIR) / preprocess.INTERIM_DATA_NAME
+    assert out.exists()
+    df_out = pd.read_parquet(out)
+    assert "text" in df_out.columns and "labels" in df_out.columns
+    assert df_out["text"].str.len().min() > 0
+    assert df_out["text"].duplicated().sum() == 0
 
-    # Ensure split_data module reads/writes from our tmp folders
-    monkeypatch.setattr(split_data, "INTERIM_DATA_DIR", tmp_path / "interim")
-    monkeypatch.setattr(split_data, "INTERIM_DATA_NAME", "emotions_cleaned.parquet")
-    monkeypatch.setattr(split_data, "PROCESSED_DATA_DIR", tmp_path / "processed")
+def test_sanitize_text(make_sample_df):
+    """ Test the sanitization of text in the dataframe."""
+    
+    df = make_sample_df
+    sanitized = preprocess.sanitize_text(df.copy())
+    assert type(sanitized) is pd.DataFrame
+    assert "text" in sanitized.columns and "labels" in sanitized.columns
+    assert all("\n" not in t for t in sanitized["text"])  # newlines removed
+    assert sanitized["text"].str.len().min() >= 0
 
-    path = Path(split_data.INTERIM_DATA_DIR)
-    path.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(path / split_data.INTERIM_DATA_NAME, index=False)
-
+def test_remove_empty_or_duplicate(make_sample_df):
+    """ Test the removal of empty or duplicate entries in the dataframe."""
+    
+    df = make_sample_df
+    cleaned = preprocess.remove_empty_or_duplicate(df.copy())
+    assert type(cleaned) is pd.DataFrame
+    assert "text" in cleaned.columns and "labels" in cleaned.columns
+    assert "" not in cleaned["text"].values
+    assert cleaned["text"].duplicated().sum() == 0
+    
+def test_create_split_dataframes(make_clean_sample_df):
+    """ Test the creation of train, validation, and test splits from the dataframe."""
+    
+    df = make_clean_sample_df
+    train_df, val_df, test_df = split_data.create_split_dataframes(df)
+    
+    # Check that the splits are correct
+    total_rows = len(df)
+    assert len(train_df) + len(val_df) + len(test_df) == total_rows
+    assert abs(len(train_df) - 0.7 * total_rows) <= 1
+    assert abs(len(val_df) - 0.2 * total_rows) <= 1
+    assert abs(len(test_df) - 0.1 * total_rows) <= 1
+ 
+def test_split_data():
+    """ Test the full data splitting process, ensuring output files are created and row counts match."""
+    
     split_data.split_data()
 
-    train = Path(split_data.PROCESSED_DATA_DIR / "train.parquet")
-    val = Path(split_data.PROCESSED_DATA_DIR / "validation.parquet")
-    test = Path(split_data.PROCESSED_DATA_DIR / "test.parquet")
+    processed_dir = Path(split_data.PROCESSED_DATA_DIR)
+    train_path = processed_dir / "train.parquet"
+    val_path = processed_dir / "validation.parquet"
+    test_path = processed_dir / "test.parquet"
 
-    assert train.exists() and val.exists() and test.exists()
+    assert train_path.exists()
+    assert val_path.exists()
+    assert test_path.exists()
 
-    df_train = pd.read_parquet(train)
-    df_val = pd.read_parquet(val)
-    df_test = pd.read_parquet(test)
+    train_df = pd.read_parquet(train_path)
+    val_df = pd.read_parquet(val_path)
+    test_df = pd.read_parquet(test_path)
 
-    assert len(df_train) + len(df_val) + len(df_test) == len(df)
-
-
-def test_gx_context_configuration_constants():
-    assert hasattr(gx_context_configuration, "DATASOURCE_NAME")
-    assert hasattr(gx_context_configuration, "CLEAN_DATA_ASSET")
-    assert hasattr(gx_context_configuration, "CHECKPOINT")
-
-
-class DummyCheckpoint:
-    def run(self):
-        fake = types.SimpleNamespace()
-        fake.run_results = {"run_1": {"statistics": {"evaluated_expectations": 5, "unsuccessful_expectations": 1}}}
-        return fake
-
-
-class DummyContext:
-    def __init__(self, checkpoint):
-        self._ck = checkpoint
-
-    @property
-    def checkpoints(self):
-        class C:
-            def __init__(self, ck):
-                self._ck = ck
-
-            def get(self, name):
-                return self._ck
-
-        return C(self._ck)
-
-
-def test_validate_data_monkeypatched(monkeypatch):
-    # monkeypatch gx.get_context used in validate_data module import
-    monkeypatch.setattr("src.data.validate_data.gx.get_context", lambda mode, project_root_dir: DummyContext(DummyCheckpoint()))
-
-    # reload module to execute top-level code under monkeypatched get_context
-    import importlib
-    import src.data.validate_data as vd
-    importlib.reload(vd)
-
-    # the module runs top-level code and defines expectations_run etc as module variables
-    assert hasattr(vd, "expectations_run")
-    assert hasattr(vd, "expectations_failed")
-    assert vd.expectations_run == 5
-    assert vd.expectations_failed == 1
+    total_rows = len(train_df) + len(val_df) + len(test_df)
+    original_df = pd.read_parquet(Path(split_data.INTERIM_DATA_DIR) / split_data.INTERIM_DATA_NAME)
+    assert total_rows == len(original_df)
