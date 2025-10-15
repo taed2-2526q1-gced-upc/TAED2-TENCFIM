@@ -55,8 +55,14 @@ dev = [
     "black>=25.1.0",
     "pylint>=3.3.8",
     "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = "."
 testpaths = "tests"
+addopts = "--junitxml=out/tests-report.xml --cov=src --cov-report=html:reports/coverage"
+
+[tool.coverage.run]
+omit = ["src/data/validate_data.py", "src/data/gx_context_configuration.py", "src/modeling/train.py"]
+
