@@ -82,15 +82,15 @@ data_docs_sites:
 fluent_datasources:
   pandas:
     type: pandas
-    id: bd8b8171-650c-46d6-81d4-86fa1fe30ec3
+    id: 8951fa34-1cb6-4b93-9d82-6ae9dc32cba1
     assets:
       clean_emotions:
         type: parquet
-        id: ba1dc39e-2756-4442-abd4-4bb1526d5812
+        id: 828519c9-f166-4d75-9456-58e6b1108b00
         batch_definitions:
           emotions_data:
-            id: aa2aeca1-a67f-430b-9c7e-0498bf22414b
+            id: 46389448-854a-4ecb-8e7c-9b11995c2d28
             partitioner:
-        path: C:\Users\mique\OneDrive\Escritorio\UNI\Cuarto\TAED2\Lab\repo-TAED2-TENCFIM\TAED2-TENCFIM\data\interim\emotions_cleaned.parquet
-analytics_enabled: false
-data_context_id: cea01b5a-db99-4143-b14e-f1c49662d8f3
+        path: /home/bielbo/Documents/GCED/TAED2/TAED2-TENCFIM/data/interim/emotions_cleaned.parquet
+analytics_enabled:
+data_context_id: 39c01d5e-4392-4b85-97e5-664635f63de7

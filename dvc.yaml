@@ -22,7 +22,7 @@ stages:
     - data/processed/validation.parquet
     - data/processed/test.parquet
   train:
-    cmd: python -m src.modeling.train SamLowe/roberta-base-go_emotions roberta-emotions-13
+    cmd: python -m src.modeling.train
     deps:
     - data/processed/train.parquet
     - data/processed/validation.parquet

@@ -12,7 +12,6 @@ stages:
       hash: md5
       md5: 5ca588a5d3438f1a48f86a045f3d11b8
       size: 7410569
-
   preprocess:
     cmd: python -m src.data.preprocess
     deps:
@@ -38,38 +37,37 @@ stages:
       size: 8197218
     - path: src/data/split_data.py
       hash: md5
-      md5: 72162b62f111d1197cc1ea5a29e99d11
-      size: 2040
+      md5: a9b86420f59ddf267aa3a06d1d759fa3
+      size: 2242
     outs:
     - path: data/processed/test.parquet
       hash: md5
-      md5: 7bfcefd7941ff11480da1183c2686d43
+      md5: 4513090b841a7e6e524986e1a36d5b82
       size: 840390
     - path: data/processed/train.parquet
       hash: md5
-      md5: 0e1c1bb9ba21074d665862bab703ed9d
+      md5: e062eea6bfb8a30504e2a0c323e27ac5
       size: 5806796
     - path: data/processed/validation.parquet
       hash: md5
-      md5: d15ed416b6539992a8461ba56623ce20
+      md5: 58467f28aeeb773abd66d6453dd976a9
       size: 1659762
   train:
-    cmd: python -m src.modeling.train SamLowe/roberta-base-go_emotions roberta-emotions-13
+    cmd: python -m src.modeling.train
     deps:
     - path: data/processed/test.parquet
       hash: md5
-      md5: 7bfcefd7941ff11480da1183c2686d43
+      md5: 4513090b841a7e6e524986e1a36d5b82
       size: 840390
     - path: data/processed/train.parquet
       hash: md5
-      md5: 0e1c1bb9ba21074d665862bab703ed9d
+      md5: e062eea6bfb8a30504e2a0c323e27ac5
       size: 5806796
     - path: data/processed/validation.parquet
       hash: md5
-      md5: d15ed416b6539992a8461ba56623ce20
+      md5: 58467f28aeeb773abd66d6453dd976a9
       size: 1659762
     - path: src/modeling/train.py
       hash: md5
-      md5: 62a44e03d44b0c01f89ca5739a4c5cbb
-      size: 10894
-
+      md5: 5d67a4c79363f4d77248210a4ec589fb
+      size: 15588
