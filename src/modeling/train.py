@@ -31,6 +31,10 @@ from transformers import (
     TrainingArguments,
 )
 from typing import Optional, Dict, Any
+try:
+    from transformers import EarlyStoppingCallback
+except Exception:  # pragma: no cover - older transformers versions may not have it
+    EarlyStoppingCallback = None  # type: ignore
 
 # Optional integrations
 try:
@@ -76,15 +80,6 @@ try:
     mlflow.set_registry_uri(MLFLOW_URI)
 except Exception:
     pass
-
-SPEEDUP_TRAINING = True  # Set to True to speed up training by using a smaller dataset
-SAMPLE_SIZE = 5000  
-
-BATCH_SIZE = 32
-EPOCHS = 5
-LEARNING_RATE = 2e-5
-WEIGHT_DECAY = 0.01
-LR_SCHEDULER = "linear"
 
 
 def _find_local_hf_model() -> Optional[str]:
@@ -157,15 +152,21 @@ def _train_model(hf_model: str, model_name: str):
     # Prepare tokenizer & metrics
     # ------------------------------------------------------------------
     # -----------------------------
-    # Hyperparameters (local) --- edit here
+    # Hyperparameters (local)
     # -----------------------------
-    SPEEDUP_TRAINING = True  # set to False to use the full dataset
-    SAMPLE_SIZE = 60000
-    BATCH_SIZE = 32
-    EPOCHS = 4  # only fine-tune head by default
-    LEARNING_RATE = 2e-5
-    WEIGHT_DECAY = 0.01
-    LR_SCHEDULER = "linear"
+    # Hyperparameters (requested)
+    SPEEDUP_TRAINING = True  # speedup_training
+    SAMPLE_SIZE = 30000      # sample_size
+    BATCH_SIZE = 16          # batch_size (per device)
+    EPOCHS = 3               # epochs
+    LEARNING_RATE = 2e-5     # lr
+    WEIGHT_DECAY = 0.01      # weight_decay
+    LR_SCHEDULER = "cosine"  # scheduler
+    GRAD_ACCUM_STEPS = 2     # gradient_accumulation_steps
+    USE_FP16 = True          # use_fp16
+    WARMUP_RATIO = 0.03      # warmup_ratio
+    EARLY_STOPPING_PATIENCE = 3  # early_stopping_patience
+    SAVE_CHECKPOINT_EVERY = 1000 # save_checkpoint_every (steps)
 
     # If hf_model points to a local snapshot folder, pass that to from_pretrained
     tokenizer = AutoTokenizer.from_pretrained(hf_model)
@@ -256,25 +257,33 @@ def _train_model(hf_model: str, model_name: str):
     train_ds.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
     validation_ds.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
 
+    # Determine device and amp settings
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    logger.info(f"Using device: {device}")
+
+    # Build TrainingArguments with requested settings
     training_args = TrainingArguments(
         output_dir=str(MODELS_DIR / f"{model_name}-checkpoint"),
         per_device_train_batch_size=BATCH_SIZE,
         per_device_eval_batch_size=BATCH_SIZE,
-        eval_strategy="epoch",
+        gradient_accumulation_steps=GRAD_ACCUM_STEPS,
+        eval_strategy="steps",
+        eval_steps=SAVE_CHECKPOINT_EVERY,
+        save_steps=SAVE_CHECKPOINT_EVERY,
         num_train_epochs=EPOCHS,
         learning_rate=LEARNING_RATE,
         weight_decay=WEIGHT_DECAY,
         lr_scheduler_type=LR_SCHEDULER,
+        warmup_ratio=WARMUP_RATIO,
+        fp16=USE_FP16 and (device == "cuda"),
         push_to_hub=False,
-        metric_for_best_model="accuracy",
-        load_best_model_at_end=False,
+    metric_for_best_model="accuracy",
+        load_best_model_at_end=True,
+        greater_is_better=True,
         report_to=[],  # avoid auto-integrations (wandb/comet/dagshub)
     )
 
     data_collator = DataCollatorWithPadding(tokenizer)
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    logger.info(f"Using device: {device}")
     
     if device == "cuda":
         logger.info(f"GPU memory before model loading: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
@@ -283,7 +292,7 @@ def _train_model(hf_model: str, model_name: str):
     
     model = AutoModelForSequenceClassification.from_pretrained(
         hf_model,
-        num_labels=len(label_list),
+        num_labels=13,  # num_labels
         id2label=id2label,
         label2id={k: v for v, k in id2label.items()},
         problem_type="single_label_classification",
@@ -297,6 +306,8 @@ def _train_model(hf_model: str, model_name: str):
     if device == "cuda":
         logger.info(f"GPU memory after model loading: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
 
+    callbacks = [EarlyStoppingCallback(early_stopping_patience=EARLY_STOPPING_PATIENCE)] if EarlyStoppingCallback else []
+
     trainer = Trainer(
         model=model,
         tokenizer=tokenizer,
@@ -305,6 +316,7 @@ def _train_model(hf_model: str, model_name: str):
         train_dataset=train_ds,
         eval_dataset=validation_ds,
         compute_metrics=compute_metrics,
+        callbacks=callbacks if callbacks else None,
     )
 
     # Workaround: Some versions of transformers+dagshub raise
@@ -327,12 +339,18 @@ def _train_model(hf_model: str, model_name: str):
             mlflow.log_params(
                 {
                     "model": hf_model,
-                    "num_labels": len(label_list),
+                    "num_labels": 13,
                     "epochs": EPOCHS,
                     "batch_size": BATCH_SIZE,
+                    "gradient_accumulation_steps": GRAD_ACCUM_STEPS,
+                    "effective_batch_size": 32,
                     "lr": LEARNING_RATE,
                     "weight_decay": WEIGHT_DECAY,
                     "scheduler": LR_SCHEDULER,
+                    "warmup_ratio": WARMUP_RATIO,
+                    "use_fp16": USE_FP16,
+                    "early_stopping_patience": EARLY_STOPPING_PATIENCE,
+                    "save_checkpoint_every": SAVE_CHECKPOINT_EVERY,
                     "speedup_training": SPEEDUP_TRAINING,
                     "sample_size": SAMPLE_SIZE if SPEEDUP_TRAINING else None,
                 }
