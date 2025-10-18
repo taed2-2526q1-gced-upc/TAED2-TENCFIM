@@ -152,7 +152,7 @@ def _train_model(hf_model: str, model_name: str):
     # Hyperparameters (local) --- edit here
     # -----------------------------
     SPEEDUP_TRAINING = False  # set to False to use the full dataset
-    SAMPLE_SIZE = 60000
+    SAMPLE_SIZE = 30000
     BATCH_SIZE = 32
     EPOCHS = 10  # only fine-tune head by default
     LEARNING_RATE = 2e-5
@@ -383,7 +383,7 @@ def main():
     # Model names: roberta-emotions-v1.x --> First version: testing
     #              roberta-emotions-v2.x --> Second version: fine tuning
     
-    model_name = "roberta-emotions-v2.8"
+    model_name = "roberta-emotions-v3.4"  # Update version as needed
     
     logger.info(f"Starting training pipeline for model: {model_name}")
     logger.info(f"Base HF model (local or hub id): {hf_model}")
