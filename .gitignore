@@ -193,5 +193,4 @@ cython_debug/
 /data
 /models
 uv.lock
-dvc.lock
 gx/*
