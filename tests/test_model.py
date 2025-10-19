@@ -5,8 +5,6 @@ from transformers import pipeline
 
 from src.config import MODELS_DIR, PROCESSED_DATA_DIR, SEED, PROD_MODEL
 
-
-MODEL_NAME = PROD_MODEL
 ACC_THRESHOLD = 0.70
 TEST_SAMPLE_SIZE = 1000
 
@@ -21,7 +19,8 @@ EMOTIONS_LABELS = [
 @pytest.fixture(scope="module")
 def sentiment_pipeline():
     """Load the sentiment analysis pipeline once per module."""
-    model_path = MODELS_DIR / MODEL_NAME
+
+    model_path = MODELS_DIR / PROD_MODEL
     assert model_path.exists(), f"Model does not exist at {model_path}"
     return pipeline("sentiment-analysis", str(model_path))
 
@@ -29,6 +28,7 @@ def sentiment_pipeline():
 @pytest.fixture(scope="function")
 def test_dataset():
     """Load a small, shuffled subset of the test dataset."""
+
     ds = load_dataset(
         "parquet",
         data_files={"test": str(PROCESSED_DATA_DIR / "test.parquet")}
@@ -42,6 +42,7 @@ def test_dataset():
 
 def test_model_accuracy(sentiment_pipeline, test_dataset):
     """Test the model's accuracy on a small test subset."""
+
     accuracy = evaluate.load("accuracy")
     label2id = {emotion.capitalize(): i for i, emotion in enumerate(EMOTIONS_LABELS)}
 
@@ -64,9 +65,8 @@ def test_model_accuracy(sentiment_pipeline, test_dataset):
         f"Model accuracy is {acc_score:.2f}, below threshold {ACC_THRESHOLD}."
     )
 
-# ---------------------------------------------------------------------
+
 # Prediction tests
-# ---------------------------------------------------------------------
 @pytest.mark.parametrize(
     "text, expected_label",
     [
@@ -88,6 +88,7 @@ def test_model_accuracy(sentiment_pipeline, test_dataset):
 
 def test_model_predictions(sentiment_pipeline, text, expected_label):
     """Check that the model predicts the correct label for specific examples."""
+
     result = sentiment_pipeline(text)
     predicted_label = result[0]["label"]
 
@@ -98,6 +99,7 @@ def test_model_predictions(sentiment_pipeline, text, expected_label):
 
 def test_model_reproducibility(sentiment_pipeline):
     """The same input text should always yield the same predicted label."""
+
     text = "I am very happy with this result!"
     result1 = sentiment_pipeline(text)[0]["label"]
     result2 = sentiment_pipeline(text)[0]["label"]
@@ -109,6 +111,7 @@ def test_model_reproducibility(sentiment_pipeline):
 
 def test_batch_inference_output(sentiment_pipeline):
     """Ensure batch inference returns one prediction per input with valid labels."""
+
     texts = ["I love this!", "I am angry right now.", "This is confusing.", "Totally neutral."]
     results = sentiment_pipeline(texts)
 
@@ -119,6 +122,7 @@ def test_batch_inference_output(sentiment_pipeline):
 
 def test_model_handles_empty_input(sentiment_pipeline):
     """The model should handle empty input gracefully (no crash or invalid output)."""
+    
     result = sentiment_pipeline("")
 
     assert result is not None, "Model returned None for empty input"
@@ -128,6 +132,7 @@ def test_model_handles_empty_input(sentiment_pipeline):
 
 def test_model_handles_long_input(sentiment_pipeline):
     """The model should crash when processing inputs longer than 512 tokens."""
+
     long_text = "This is a very long text. " * 1000
     try:
         result = sentiment_pipeline(long_text)
@@ -139,7 +144,9 @@ def test_model_handles_long_input(sentiment_pipeline):
 
 def test_model_handles_special_characters(sentiment_pipeline):
     """The model should handle special characters and emojis without errors."""
+
     special_text = "I love this! 😍👍 #excited @friend"
+
     try:
         result = sentiment_pipeline(special_text)
     except Exception as e:
@@ -156,7 +163,8 @@ def test_model_handles_special_characters(sentiment_pipeline):
 
 def test_model_handles_non_english_input(sentiment_pipeline):
     """The model should handle non-English texts without crashing or invalid output."""
-    non_english_text = "Me encuentro muy bien!"  # Spanish for "I am very happy!"
+
+    non_english_text = "Me encuentro muy bien!"  # Spanish for "I feel really well!"
     try:
         result = sentiment_pipeline(non_english_text)
     except Exception as e:
