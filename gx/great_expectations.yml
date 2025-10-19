@@ -86,11 +86,12 @@ fluent_datasources:
     assets:
       clean_emotions:
         type: parquet
-        id: 828519c9-f166-4d75-9456-58e6b1108b00
+        id: 2ebcbed8-427c-44b9-8d9f-39f4c71cbc21
         batch_definitions:
           emotions_data:
-            id: 46389448-854a-4ecb-8e7c-9b11995c2d28
+            id: 1fdc3ed8-e35d-48bc-b721-3f5944e2b36a
             partitioner:
-        path: /home/bielbo/Documents/GCED/TAED2/TAED2-TENCFIM/data/interim/emotions_cleaned.parquet
+        path: 
+          /home/bielbo/Documents/GCED/TAED2/TAED2-TENCFIM/data/interim/emotions_cleaned.parquet
 analytics_enabled:
 data_context_id: 39c01d5e-4392-4b85-97e5-664635f63de7
