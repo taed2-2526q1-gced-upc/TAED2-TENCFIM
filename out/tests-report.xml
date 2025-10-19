@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="5" skipped="0" tests="19" time="273.219" timestamp="2025-10-19T12:14:14.597031+02:00" hostname="DESKTOP-P5R73QJ"><testcase classname="tests.test_model" name="test_model_accuracy" time="176.568"><failure message="AssertionError: Model accuracy is 0.64, below threshold 0.7.&#10;assert 0.641 &gt; 0.7">sentiment_pipeline = &lt;transformers.pipelines.text_classification.TextClassificationPipeline object at 0x000002E0BB72CDD0&gt;
+test_dataset = Dataset({
+    features: ['text', 'labels', '__index_level_0__'],
+    num_rows: 1000
+})
+
+    def test_model_accuracy(sentiment_pipeline, test_dataset):
+        """Test the model's accuracy on a small test subset."""
+    
+        accuracy = evaluate.load("accuracy")
+        label2id = {emotion.capitalize(): i for i, emotion in enumerate(EMOTIONS_LABELS)}
+    
+        if isinstance(test_dataset["labels"][0], str):
+            test_dataset = test_dataset.map(
+                lambda x: {"labels": label2id.get(x["labels"].capitalize(), -1)}
+            )
+    
+        evaluator = evaluate.evaluator("sentiment-analysis")
+        result_acc = evaluator.compute(
+            model_or_pipeline=sentiment_pipeline,
+            data=test_dataset,
+            metric=accuracy,
+            label_column="labels",
+            label_mapping=label2id,
+        )
+    
+        acc_score = result_acc["accuracy"]
+&gt;       assert acc_score &gt; ACC_THRESHOLD, (
+            f"Model accuracy is {acc_score:.2f}, below threshold {ACC_THRESHOLD}."
+        )
+E       AssertionError: Model accuracy is 0.64, below threshold 0.7.
+E       assert 0.641 &gt; 0.7
+
+tests\test_model.py:64: AssertionError</failure></testcase><testcase classname="tests.test_model" name="test_model_predictions[I am very happy-Happiness]" time="0.098" /><testcase classname="tests.test_model" name="test_model_predictions[I am so sad-Sadness]" time="0.094" /><testcase classname="tests.test_model" name="test_model_predictions[I dislike the plot and the characters.-Disgust]" time="0.107" /><testcase classname="tests.test_model" name="test_model_predictions[I love the plot and the characters.-Love]" time="0.105" /><testcase classname="tests.test_model" name="test_model_predictions[I am scared of the dark.-Fear]" time="0.097" /><testcase classname="tests.test_model" name="test_model_predictions[This is a neutral statement.-Neutral]" time="0.115"><failure message="AssertionError: Expected 'Neutral' but got 'Happiness' for text: 'This is a neutral statement.'.&#10;assert 'Happiness' == 'Neutral'&#10;  &#10;  - Neutral&#10;  + Happiness">sentiment_pipeline = &lt;transformers.pipelines.text_classification.TextClassificationPipeline object at 0x000002E0BB72CDD0&gt;
+text = 'This is a neutral statement.', expected_label = 'Neutral'
+
+    @pytest.mark.parametrize(
+        "text, expected_label",
+        [
+            ("I am very happy", "Happiness"),
+            ("I am so sad", "Sadness"),
+            ("I dislike the plot and the characters.", "Disgust"),
+            ("I love the plot and the characters.", "Love"),
+            ("I am scared of the dark.", "Fear"),
+            ("This is a neutral statement.", "Neutral"),
+            ("I am furious about the delay!", "Anger"),
+            ("What a surprising turn of events!", "Surprise"),
+            ("I feel so guilty about what happened.", "Guilt"),
+            ("This is so confusing to me.", "Confusion"),
+            ("I can't believe how much I desire that.", "Desire"),
+            ("Oh great, another rainy day. Just what I needed.", "Sarcasm"),
+        ],
+    )
+    
+    
+    def test_model_predictions(sentiment_pipeline, text, expected_label):
+        """Check that the model predicts the correct label for specific examples."""
+    
+        result = sentiment_pipeline(text)
+        predicted_label = result[0]["label"]
+    
+&gt;       assert predicted_label == expected_label, (
+            f"Expected '{expected_label}' but got '{predicted_label}' for text: '{text}'."
+        )
+E       AssertionError: Expected 'Neutral' but got 'Happiness' for text: 'This is a neutral statement.'.
+E       assert 'Happiness' == 'Neutral'
+E         
+E         - Neutral
+E         + Happiness
+
+tests\test_model.py:95: AssertionError</failure></testcase><testcase classname="tests.test_model" name="test_model_predictions[I am furious about the delay!-Anger]" time="0.117" /><testcase classname="tests.test_model" name="test_model_predictions[What a surprising turn of events!-Surprise]" time="0.112" /><testcase classname="tests.test_model" name="test_model_predictions[I feel so guilty about what happened.-Guilt]" time="0.106"><failure message="AssertionError: Expected 'Guilt' but got 'Shame' for text: 'I feel so guilty about what happened.'.&#10;assert 'Shame' == 'Guilt'&#10;  &#10;  - Guilt&#10;  + Shame">sentiment_pipeline = &lt;transformers.pipelines.text_classification.TextClassificationPipeline object at 0x000002E0BB72CDD0&gt;
+text = 'I feel so guilty about what happened.', expected_label = 'Guilt'
+
+    @pytest.mark.parametrize(
+        "text, expected_label",
+        [
+            ("I am very happy", "Happiness"),
+            ("I am so sad", "Sadness"),
+            ("I dislike the plot and the characters.", "Disgust"),
+            ("I love the plot and the characters.", "Love"),
+            ("I am scared of the dark.", "Fear"),
+            ("This is a neutral statement.", "Neutral"),
+            ("I am furious about the delay!", "Anger"),
+            ("What a surprising turn of events!", "Surprise"),
+            ("I feel so guilty about what happened.", "Guilt"),
+            ("This is so confusing to me.", "Confusion"),
+            ("I can't believe how much I desire that.", "Desire"),
+            ("Oh great, another rainy day. Just what I needed.", "Sarcasm"),
+        ],
+    )
+    
+    
+    def test_model_predictions(sentiment_pipeline, text, expected_label):
+        """Check that the model predicts the correct label for specific examples."""
+    
+        result = sentiment_pipeline(text)
+        predicted_label = result[0]["label"]
+    
+&gt;       assert predicted_label == expected_label, (
+            f"Expected '{expected_label}' but got '{predicted_label}' for text: '{text}'."
+        )
+E       AssertionError: Expected 'Guilt' but got 'Shame' for text: 'I feel so guilty about what happened.'.
+E       assert 'Shame' == 'Guilt'
+E         
+E         - Guilt
+E         + Shame
+
+tests\test_model.py:95: AssertionError</failure></testcase><testcase classname="tests.test_model" name="test_model_predictions[This is so confusing to me.-Confusion]" time="0.118" /><testcase classname="tests.test_model" name="test_model_predictions[I can't believe how much I desire that.-Desire]" time="0.122" /><testcase classname="tests.test_model" name="test_model_predictions[Oh great, another rainy day. Just what I needed.-Sarcasm]" time="0.114"><failure message="AssertionError: Expected 'Sarcasm' but got 'Love' for text: 'Oh great, another rainy day. Just what I needed.'.&#10;assert 'Love' == 'Sarcasm'&#10;  &#10;  - Sarcasm&#10;  + Love">sentiment_pipeline = &lt;transformers.pipelines.text_classification.TextClassificationPipeline object at 0x000002E0BB72CDD0&gt;
+text = 'Oh great, another rainy day. Just what I needed.'
+expected_label = 'Sarcasm'
+
+    @pytest.mark.parametrize(
+        "text, expected_label",
+        [
+            ("I am very happy", "Happiness"),
+            ("I am so sad", "Sadness"),
+            ("I dislike the plot and the characters.", "Disgust"),
+            ("I love the plot and the characters.", "Love"),
+            ("I am scared of the dark.", "Fear"),
+            ("This is a neutral statement.", "Neutral"),
+            ("I am furious about the delay!", "Anger"),
+            ("What a surprising turn of events!", "Surprise"),
+            ("I feel so guilty about what happened.", "Guilt"),
+            ("This is so confusing to me.", "Confusion"),
+            ("I can't believe how much I desire that.", "Desire"),
+            ("Oh great, another rainy day. Just what I needed.", "Sarcasm"),
+        ],
+    )
+    
+    
+    def test_model_predictions(sentiment_pipeline, text, expected_label):
+        """Check that the model predicts the correct label for specific examples."""
+    
+        result = sentiment_pipeline(text)
+        predicted_label = result[0]["label"]
+    
+&gt;       assert predicted_label == expected_label, (
+            f"Expected '{expected_label}' but got '{predicted_label}' for text: '{text}'."
+        )
+E       AssertionError: Expected 'Sarcasm' but got 'Love' for text: 'Oh great, another rainy day. Just what I needed.'.
+E       assert 'Love' == 'Sarcasm'
+E         
+E         - Sarcasm
+E         + Love
+
+tests\test_model.py:95: AssertionError</failure></testcase><testcase classname="tests.test_model" name="test_model_reproducibility" time="0.227" /><testcase classname="tests.test_model" name="test_batch_inference_output" time="0.547" /><testcase classname="tests.test_model" name="test_model_handles_empty_input" time="0.094" /><testcase classname="tests.test_model" name="test_model_handles_long_input" time="0.085"><failure message="Failed: Model failed on long input: The expanded size of the tensor (7003) must match the existing size (514) at non-singleton dimension 1.  Target sizes: [1, 7003].  Tensor sizes: [1, 514]">sentiment_pipeline = &lt;transformers.pipelines.text_classification.TextClassificationPipeline object at 0x000002E0BB72CDD0&gt;
+
+    def test_model_handles_long_input(sentiment_pipeline):
+        """The model should crash when processing inputs longer than 512 tokens."""
+    
+        long_text = "This is a very long text. " * 1000
+        try:
+&gt;           result = sentiment_pipeline(long_text)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_model.py:138: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\transformers\pipelines\text_classification.py:168: in __call__
+    result = super().__call__(*inputs, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\transformers\pipelines\base.py:1467: in __call__
+    return self.run_single(inputs, preprocess_params, forward_params, postprocess_params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\transformers\pipelines\base.py:1474: in run_single
+    model_outputs = self.forward(model_inputs, **forward_params)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\transformers\pipelines\base.py:1374: in forward
+    model_outputs = self._forward(model_inputs, **forward_params)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\transformers\pipelines\text_classification.py:199: in _forward
+    return self.model(**model_inputs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\torch\nn\modules\module.py:1775: in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\torch\nn\modules\module.py:1786: in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\transformers\models\roberta\modeling_roberta.py:1188: in forward
+    outputs = self.roberta(
+.venv\Lib\site-packages\torch\nn\modules\module.py:1775: in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\torch\nn\modules\module.py:1786: in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = RobertaModel(
+  (embeddings): RobertaEmbeddings(
+    (word_embeddings): Embedding(50265, 768, padding_idx=1)
+    (posi...), eps=1e-05, elementwise_affine=True)
+          (dropout): Dropout(p=0.1, inplace=False)
+        )
+      )
+    )
+  )
+)
+input_ids = tensor([[   0,  713,   16,  ...,    4, 1437,    2]])
+attention_mask = tensor([[1, 1, 1,  ..., 1, 1, 1]]), token_type_ids = None
+position_ids = None, head_mask = None, inputs_embeds = None
+encoder_hidden_states = None, encoder_attention_mask = None
+past_key_values = None, use_cache = False, output_attentions = False
+output_hidden_states = False, return_dict = True, cache_position = None
+
+    @auto_docstring
+    def forward(
+        self,
+        input_ids: Optional[torch.Tensor] = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        token_type_ids: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.Tensor] = None,
+        head_mask: Optional[torch.Tensor] = None,
+        inputs_embeds: Optional[torch.Tensor] = None,
+        encoder_hidden_states: Optional[torch.Tensor] = None,
+        encoder_attention_mask: Optional[torch.Tensor] = None,
+        past_key_values: Optional[Cache] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+        cache_position: Optional[torch.Tensor] = None,
+    ) -&gt; Union[tuple[torch.Tensor], BaseModelOutputWithPoolingAndCrossAttentions]:
+        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_hidden_states = (
+            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+        )
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+    
+        if self.config.is_decoder:
+            use_cache = use_cache if use_cache is not None else self.config.use_cache
+        else:
+            use_cache = False
+    
+        if input_ids is not None and inputs_embeds is not None:
+            raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
+        elif input_ids is not None:
+            self.warn_if_padding_and_no_attention_mask(input_ids, attention_mask)
+            input_shape = input_ids.size()
+        elif inputs_embeds is not None:
+            input_shape = inputs_embeds.size()[:-1]
+        else:
+            raise ValueError("You have to specify either input_ids or inputs_embeds")
+    
+        batch_size, seq_length = input_shape
+        device = input_ids.device if input_ids is not None else inputs_embeds.device
+    
+        past_key_values_length = 0
+        if past_key_values is not None:
+            past_key_values_length = (
+                past_key_values[0][0].shape[-2]
+                if not isinstance(past_key_values, Cache)
+                else past_key_values.get_seq_length()
+            )
+    
+        if token_type_ids is None:
+            if hasattr(self.embeddings, "token_type_ids"):
+                buffered_token_type_ids = self.embeddings.token_type_ids[:, :seq_length]
+&gt;               buffered_token_type_ids_expanded = buffered_token_type_ids.expand(batch_size, seq_length)
+                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E               RuntimeError: The expanded size of the tensor (7003) must match the existing size (514) at non-singleton dimension 1.  Target sizes: [1, 7003].  Tensor sizes: [1, 514]
+
+.venv\Lib\site-packages\transformers\models\roberta\modeling_roberta.py:793: RuntimeError
+
+During handling of the above exception, another exception occurred:
+
+sentiment_pipeline = &lt;transformers.pipelines.text_classification.TextClassificationPipeline object at 0x000002E0BB72CDD0&gt;
+
+    def test_model_handles_long_input(sentiment_pipeline):
+        """The model should crash when processing inputs longer than 512 tokens."""
+    
+        long_text = "This is a very long text. " * 1000
+        try:
+            result = sentiment_pipeline(long_text)
+            assert isinstance(result, list) and len(result) == 1, "Unexpected output format for long input"
+            assert "label" in result[0] and "score" in result[0], "Output missing expected keys"
+        except Exception as e:
+&gt;           pytest.fail(f"Model failed on long input: {e}")
+E           Failed: Model failed on long input: The expanded size of the tensor (7003) must match the existing size (514) at non-singleton dimension 1.  Target sizes: [1, 7003].  Tensor sizes: [1, 514]
+
+tests\test_model.py:142: Failed</failure></testcase><testcase classname="tests.test_model" name="test_model_handles_special_characters" time="0.175" /><testcase classname="tests.test_model" name="test_model_handles_non_english_input" time="0.159" /></testsuite></testsuites>
