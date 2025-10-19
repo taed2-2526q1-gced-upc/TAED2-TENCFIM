@@ -23,9 +23,7 @@ def main() -> None:
     expectations_failed = stats["unsuccessful_expectations"]
 
     logger.info(
-        "Validation results: %d expectations evaluated, %d failed.",
-        expectations_run,
-        expectations_failed,
+        f"Validation results: {expectations_run} expectations evaluated, {expectations_failed} failed.",
     )
 
 
