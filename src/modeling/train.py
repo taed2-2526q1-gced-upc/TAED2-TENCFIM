@@ -77,14 +77,6 @@ try:
 except Exception:
     pass
 
-SPEEDUP_TRAINING = True  # Set to True to speed up training by using a smaller dataset
-SAMPLE_SIZE = 5000  
-
-BATCH_SIZE = 32
-EPOCHS = 5
-LEARNING_RATE = 2e-5
-WEIGHT_DECAY = 0.01
-LR_SCHEDULER = "linear"
 
 
 def _find_local_hf_model() -> Optional[str]:
@@ -159,13 +151,13 @@ def _train_model(hf_model: str, model_name: str):
     # -----------------------------
     # Hyperparameters (local) --- edit here
     # -----------------------------
-    SPEEDUP_TRAINING = True  # set to False to use the full dataset
-    SAMPLE_SIZE = 60000
+    SPEEDUP_TRAINING = False  # set to False to use the full dataset
+    SAMPLE_SIZE = 30000
     BATCH_SIZE = 32
-    EPOCHS = 4  # only fine-tune head by default
+    EPOCHS = 10  # only fine-tune head by default
     LEARNING_RATE = 2e-5
     WEIGHT_DECAY = 0.01
-    LR_SCHEDULER = "linear"
+    LR_SCHEDULER = "cosine"
 
     # If hf_model points to a local snapshot folder, pass that to from_pretrained
     tokenizer = AutoTokenizer.from_pretrained(hf_model)
@@ -391,7 +383,7 @@ def main():
     # Model names: roberta-emotions-v1.x --> First version: testing
     #              roberta-emotions-v2.x --> Second version: fine tuning
     
-    model_name = "roberta-emotions-v2.8"
+    model_name = "roberta-emotions-v3.4"  # Update version as needed
     
     logger.info(f"Starting training pipeline for model: {model_name}")
     logger.info(f"Base HF model (local or hub id): {hf_model}")
@@ -412,5 +404,3 @@ if __name__ == "__main__":
         logger.error(f"Full traceback:\n{traceback.format_exc()}")
     finally:
         logger.info("Cleaning up and exiting...")
-
-#python src/modeling/train.py SamLowe/roberta-base-go_emotions roberta-emotions-13
