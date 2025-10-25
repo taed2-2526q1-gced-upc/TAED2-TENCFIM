@@ -192,4 +192,5 @@ cython_debug/
 .pypirc
 /data
 /models
-/~
+uv.lock
+gx/*

@@ -1,21 +1,31 @@
+"""Preprocess raw emotion data into a clean interim parquet.
+
+Steps:
+- Load raw parquet from `data/raw`.
+- Normalize and sanitize the `text` column.
+- Remove empty / null / duplicate rows.
+- Save cleaned parquet to `data/interim`.
+"""
+
 import pandas as pd
 from loguru import logger
+
 from src.config import INTERIM_DATA_DIR, INTERIM_DATA_NAME, RAW_DATA_DIR, RAW_DATA_NAME
 
 
 def sanitize_text(dataframe: pd.DataFrame) -> pd.DataFrame:
     """
-    Sanitize the text text by removing special characters and normalizing.
+    Sanitize the text column by removing special characters and normalizing.
 
     Parameters
     ----------
     dataframe : pd.DataFrame
-        The input DataFrame containing the text text.
+        The input DataFrame containing the text column.
 
     Returns
     -------
     pd.DataFrame
-        The sanitized DataFrame with cleaned text text.
+        The sanitized DataFrame with cleaned text.
     """
     dataframe["text"] = (
         dataframe["text"]
@@ -25,7 +35,7 @@ def sanitize_text(dataframe: pd.DataFrame) -> pd.DataFrame:
         .str.normalize("NFKD")
     )
 
-    # drop rows where text is not a Python str
+    # Drop rows where text is not a Python str (defensive)
     mask = dataframe["text"].apply(lambda v: isinstance(v, str))
     dataframe = dataframe[mask].reset_index(drop=True)
     dataframe["text"] = dataframe["text"].astype(str)
@@ -38,17 +48,16 @@ def remove_empty_or_duplicate(dataframe: pd.DataFrame) -> pd.DataFrame:
 
     Parameters
     ----------
-    dataframe : pl.DataFrame
-        The input DataFrame containing the text text and labels.
+    dataframe : pd.DataFrame
+        The input DataFrame containing the text and labels columns.
 
     Returns
     -------
-    pl.DataFrame
+    pd.DataFrame
         The cleaned DataFrame with no duplicate or empty rows.
     """
     dataframe = dataframe[dataframe["text"].notnull() & dataframe["labels"].notnull()]
     dataframe = dataframe[dataframe["text"] != ""]
-
     return dataframe.drop_duplicates(subset=["text"])
 
 
@@ -61,21 +70,45 @@ def preprocess_data():
     try:
         df = pd.read_parquet(RAW_DATA_DIR / RAW_DATA_NAME)
 
-        df = df.rename(columns={"Label": "labels", "Sentence": "text"})
+        # Robustly rename common column variants to the canonical names used downstream
+        rename_map = {}
+        if "Sentence" in df.columns:
+            rename_map["Sentence"] = "text"
+        if "sentence" in df.columns:
+            rename_map["sentence"] = "text"
+        if "Sentence_text" in df.columns:
+            rename_map["Sentence_text"] = "text"
+
+        if "Label" in df.columns:
+            rename_map["Label"] = "labels"
+        if "label" in df.columns:
+            rename_map["label"] = "labels"
+
+        if rename_map:
+            df = df.rename(columns=rename_map)
+
+        # Ensure required columns exist after renaming
+        if "text" not in df.columns or "labels" not in df.columns:
+            raise KeyError(
+                "Expected columns 'text' and 'labels' in raw dataset after renaming. "
+                f"Found columns: {list(df.columns)}"
+            )
 
         df = sanitize_text(df)
-
         df = remove_empty_or_duplicate(df)
 
+        # Keep only the expected columns and a consistent order
+        df = df.reset_index(drop=True)[["text", "labels"]]
+
         INTERIM_DATA_DIR.mkdir(parents=True, exist_ok=True)
+        df.to_parquet(INTERIM_DATA_DIR / INTERIM_DATA_NAME, index=False)
 
-        df.to_parquet(INTERIM_DATA_DIR / INTERIM_DATA_NAME)
-        
-        logger.info(f"Preprocessed data saved to {INTERIM_DATA_DIR / INTERIM_DATA_NAME}")
+        logger.info("Preprocessed data saved to %s", INTERIM_DATA_DIR / INTERIM_DATA_NAME)
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error(f"Failed to preprocess or save the dataset: {e}")
         raise
+
 
 if __name__ == "__main__":
     preprocess_data()

@@ -31,7 +31,12 @@ dependencies = [
     "ruff",
     "torch",
     "transformers[torch]",
+    "pydantic>=2.11.9",
     "codecarbon>=3.0.6",
+    "pytest>=8.4.2",
+    "pylint>=4.0.1",
+    "autopep8>=2.3.2",
+    "pynblint>=0.1.6",
 ]
 requires-python = "~=3.11.0"
 
@@ -53,8 +58,16 @@ dev = [
     "black>=25.1.0",
     "pylint>=3.3.8",
     "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = "."
 testpaths = "tests"
+addopts = "--junitxml=out/tests-report.xml --cov=src --cov-report=html:reports/coverage"
+
+[tool.coverage.run]
+omit = ["src/data/validate_data.py", "src/data/gx_context_configuration.py", "src/modeling/train.py"]
+
+[tool.pylint."messages control"]
+disable = ["C0301"]
