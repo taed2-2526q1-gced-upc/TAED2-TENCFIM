@@ -1,3 +1,4 @@
+# Pylint
 repos:
   - repo: local
     hooks:
@@ -7,3 +8,16 @@ repos:
         entry: pylint
         args: ["-j", "0", "--rcfile=pyproject.toml"]
         types: [python]               # pre-commit passes only staged .py files
+
+
+# Pynblint (scan notebooks; fail commit if issues)
+  - repo: local
+    hooks:
+      - id: pynblint
+        name: pynblint (changed notebooks)
+        language: system
+        files: ^notebooks/.*\.ipynb$      # only when staged .ipynb in notebooks/ change
+        pass_filenames: false             # we scan the directory (faster & simpler)
+        entry: bash -c 'mkdir -p reports; \
+                        pynblint scan notebooks --format text | tee reports/pynblint.txt; \
+                        test ${PIPESTATUS[0]} -eq 0'
