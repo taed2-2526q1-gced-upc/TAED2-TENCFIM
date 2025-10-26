@@ -68,7 +68,7 @@ async def lifespan(fastapi_app: FastAPI):
         fastapi_app.state.pipe = None
 
 
-app = FastAPI(title="IMDB Reviews API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Sentiment analysis from text || API", version="1.0.0", lifespan=lifespan)
 
 
 @app.get("/")
@@ -85,6 +85,26 @@ def root():
             "'Sarcasm' and 'Desire'."
         ),
     }
+
+
+@app.get("/health",)
+async def health_check(request: Request):
+    """
+    Health check endpoint.
+    Returns basic status info, including whether the model pipeline is loaded.
+    """
+    pipe = getattr(request.app.state, "pipe", None)
+
+    model_loaded = pipe is not None
+
+    status = {
+        "status": "ok" if model_loaded else "degraded",
+        "model_loaded": model_loaded,
+        "device": "cuda" if torch.cuda.is_available() else "cpu",
+        "version": "1.0.0"
+    }
+
+    return status
 
 
 @app.post("/prediction/single-class", response_model=List[SingleClassResponse])

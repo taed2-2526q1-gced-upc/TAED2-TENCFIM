@@ -75,7 +75,7 @@ def test_clean_data(clean_data_validator: ValidationDefinition):
 def test_download_raw_dataset():
     """ Test the download of the raw dataset."""
     
-    download_raw_dataset.download_dataset()
+    download_raw_dataset.download_raw_dataset()
     out = Path(download_raw_dataset.RAW_DATA_DIR) / download_raw_dataset.RAW_DATA_NAME
     assert out.exists()
     df = pd.read_parquet(out)
