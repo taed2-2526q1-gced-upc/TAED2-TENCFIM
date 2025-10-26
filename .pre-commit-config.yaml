@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: pylint
+        name: pylint (local venv, staged files)
+        language: system              # use current venv
+        entry: pylint
+        args: ["-j", "0", "--rcfile=pyproject.toml"]
+        types: [python]               # pre-commit passes only staged .py files
