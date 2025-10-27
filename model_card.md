@@ -105,17 +105,32 @@ This model was trained on the **emotions-dataset**, a large-scale dataset of Red
 
 ### Training Procedure
 
-<!-- This relates heavily to the Technical Specifications. Content here should link to that section when it is relevant to the training procedure. -->
 
 #### Preprocessing
-
+- Tokenization with AutoTokenizer of the truncated base model (max_length=512).
+- Text labels mapped to 13 emotion classes: Happiness, Sadness, Neutral, Anger, Love, Fear, Disgust, Confusion, Surprise, Shame, Guilt, Sarcasm, Desire.
+- Dynamic padding handled via DataCollatorWithPadding.
+- Training and validation data loaded from preprocessed Parquet files (train.parquet and validation.parquet).
 
 #### Training Hyperparameters
-
+- Base model: SamLowe/roberta-base-go_emotions
+- Batch size: 32
+- Epochs: 10
+- Learning rate: 2e-5
+- Weight decay: 0.01
+- Learning rate scheduler: Cosine
+- Layer freezing strategy:
+    RoBERTa encoder mostly frozen
+    Last 4 encoder layers + classification head fully trainable
 
 #### Speeds, Sizes, Times [optional]
-
-
+- Training duration: 1.4721 hours
+- Total energy consumed: 0.1472 kWh
+- Average power usage:
+GPU ≈ 67.37 W
+CPU ≈ 2.80 W
+RAM ≈ 20 W
+(Extracted from CodeCarbon CSV output)
 
 ## Evaluation
 
@@ -125,22 +140,27 @@ This model was trained on the **emotions-dataset**, a large-scale dataset of Red
 
 #### Testing Data
 
-
+Validation dataset split from the processed GoEmotions dataset (stored in validation.parquet).
 
 #### Factors
-
-
+- Class imbalance typical to emotion classification
+- Variable sequence length (up to 512 tokens)
+- Social media / conversational domain variability
 
 #### Metrics
-
+- Accuracy
+- F1-macro and F1-weighted
 
 ### Results
-
+- Eval accuracy: 0.7175560888279435
+- Eval f1-macro: 0.6999902374358952
+- Eval f1-weighted: 0.7129898811892713
 #### Summary
-
+- Evaluation metrics logged using MLflow during training
+- Insert your latest Accuracy & F1 results here once retrieved from the MLflow UI or DagsHub logs
 
 ## Model Examination 
-
+Not automated in the current script but can be added with a simple callback
 ## Environmental Impact
 
 <!-- Total emissions (in grams of CO2eq) and additional considerations, such as electricity usage, go here. Edit the suggested text below accordingly -->
@@ -157,15 +177,23 @@ The fine-tuning process used relatively modest computational resources compared 
 ## Technical Specifications [optional]
 
 ### Model Architecture and Objective
-
+- Fine-tuned RoBERTa-base language model for single-label emotion classification
+- Output layer: Dense classifier over 13 emotion categories
 
 ### Compute Infrastructure
 
 #### Hardware
-
+- GPU: NVIDIA GeForce RTX 5070 Laptop GPU
+- CPU: AMD Ryzen AI 9 365
+- RAM: ~30 GB available during training
+(Source: CodeCarbon hardware tracking)
 
 #### Software
-
+- OS: Linux
+- Python 3.11
+- Hugging Face: transformers, datasets, evaluate
+- MLflow + DagsHub for experiment tracking
+- CodeCarbon for emissions calculation
 
 ## Citation [optional]
 
