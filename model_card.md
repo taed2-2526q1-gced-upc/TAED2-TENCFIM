@@ -145,13 +145,12 @@ This model was trained on the **emotions-dataset**, a large-scale dataset of Red
 
 <!-- Total emissions (in grams of CO2eq) and additional considerations, such as electricity usage, go here. Edit the suggested text below accordingly -->
 
-Carbon emissions can be estimated using the [Machine Learning Impact calculator](https://mlco2.github.io/impact#compute) presented in [Lacoste et al. (2019)](https://arxiv.org/abs/1910.09700).
+Carbon emissions have been estimated using the CodeCarbon library in python.
 
-- **Hardware Type**: [More Information Needed]
-- **Hours used**: [More Information Needed]
-- **Cloud Provider**: [More Information Needed]
-- **Compute Region**: [More Information Needed]
-- **Carbon Emitted**: [More Information Needed]
+- **Hardware Type**: GPU Power
+- **Hours used**: 1.47 
+- **Compute Region**: Andalusia
+- **Carbon Emitted**: 0.0256252172527272 kg CO2e
 
 The fine-tuning process used relatively modest computational resources compared to training from scratch, as it builds on the pre-trained RoBERTa base model.
 
